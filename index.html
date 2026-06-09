@@ -5,7 +5,34 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hinson, The King Of Velocity</title>
+
     
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <script type="text/javascript">
+      google.charts.load('current', {
+        'packages':['geochart'],
+      });
+      google.charts.setOnLoadCallback(drawRegionsMap);
+
+      function drawRegionsMap() {
+        var data = google.visualization.arrayToDataTable([
+          ['Country', 'Popularity'],
+          ['North Korea', 670],
+          ['United States', 300],
+          ['Russia', 400],
+          ['Iran', 500],
+          ['France', 600],
+          ['China', 1000]
+        ]);
+
+        var options = {};
+
+        var chart = new google.visualization.GeoChart(document.getElementById('regions_div'));
+
+        chart.draw(data, options);
+      }
+    </script>
+
     <style>
         .floating-btn {      
             position: fixed;         /* Keeps the button in a fixed position on the screen */      
@@ -230,6 +257,9 @@
 
     <hr>
 
+    
+    <div id="regions_div" style="width: 500px; height: 277px;"></div>
+
     <div class="section">
         <p>I love using the <span class="highlight">Phonetic Alphabet</span>.</p>
         <div class="phonetic-box">
@@ -242,6 +272,7 @@
         <a href="Hinson/c3bL3.jpg" class="back-btn"> PHOTO </a>
         <a href="../index.html" class="back-btn">NEXT PAGE →</a>
     </div>
+
 
     <div class="ai-section">
         <p>SYSTEM STATUS: <span style="color:#00ff00;">ONLINE<p>MADE BY GEMINI</p></span></p>
