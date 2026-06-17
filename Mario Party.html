@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>COLOR PARTY FRENZY: COMPLETE MULTIPLEX</title>
+    <style>
+        :root {
+            --bg-deep: #050508;
+            --panel-bg: rgba(12, 12, 22, 0.94);
+            --gold: #ffd700;
+            --rainbow: linear-gradient(90deg, #ff3333, #ff9433, #ffeb3b, #4bc04f, #3399ff, #9933ff, #ff3399);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; font-family: 'Impact', 'Arial Black', sans-serif; }
+        body { background-color: var(--bg-deep); color: #fff; overflow: hidden; display: flex; justify-content: center; align-items: center; min-height: 100vh; min-height: -webkit-fill-available; }
+
+        #app-window {
+            width: 100vw;
+            height: 100vh;
+            max-width: 1200px;
+            max-height: 780px;
+            background: #0b0c10;
+            border: 4px solid #222;
+            border-radius: 12px;
+            position: relative;
+            box-shadow: 0 0 40px rgba(0,0,0,0.9);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .screen {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 15px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .screen.active { display: flex; }
+
+        /* NEON FLASH OVERLAY FILTER */
+        @keyframes arcadePulse {
+            0% { background-color: rgba(255, 51, 51, 0.04); }
+            25% { background-color: rgba(51, 153, 255, 0.04); }
+            50% { background-color: rgba(75, 192, 79, 0.04); }
+            75% { background-color: rgba(255, 235, 59, 0.04); }
+            100% { background-color: rgba(255, 51, 51, 0.04); }
+        }
+        .arcade-pulse-bg { 
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            pointer-events: none; 
+            z-index: 9999; 
+            animation: arcadePulse 5s infinite ease-in-out; 
+        }
+
+        .btn-frenzy {
+            background: linear-gradient(135deg, #ff0055, #9900ff);
+            color: #fff; font-size: 1.2rem; padding: 12px 35px;
+            border: 3px solid #fff; border-radius: 40px; cursor: pointer;
+            text-transform: uppercase; letter-spacing: 2px;
+            box-shadow: 0 0 15px rgba(255,0,85,0.6);
+            touch-action: manipulation;
+        }
+        .btn-frenzy:active { transform: scale(0.92); }
+
+        /* GLOBAL HOME MENU REDIRECT INTERFACE TRAY */
+        .persistent-navigation-tray {
+            position: absolute;
+            bottom: 12px;
+            left: 12px;
+            display: flex;
+            gap: 8px;
+            z-index: 100000;
+        }
+
+        #global-portal-hub-btn {
+            background: rgba(10, 25, 20, 0.95);
+            color: #33ffaa; font-size: 0.8rem; padding: 10px 20px;
+            border: 2px solid #00ffaa; border-radius: 25px; cursor: pointer;
+            text-transform: uppercase;
+            box-shadow: 0 0 12px rgba(0,255,170,0.3);
+            touch-action: manipulation;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+        #global-portal-hub-btn:active { transform: scale(0.92); background: #00ffaa; color: #000; }
+
+        #internal-system-back-btn {
+            background: rgba(25, 20, 20, 0.95);
+            color: #ff3377; font-size: 0.8rem; padding: 10px 18px;
+            border: 2px solid #ff0055; border-radius: 25px; cursor: pointer;
+            text-transform: uppercase;
+            box-shadow: 0 0 10px rgba(255,0,85,0.2);
+            touch-action: manipulation;
+            font-weight: bold;
+        }
+        #internal-system-back-btn:active { transform: scale(0.92); background: #ff0055; color: #fff; }
+
+        .header-title { font-size: 2.2rem; text-align: center; color: #fff; text-shadow: 0 0 10px #ff0055, 0 0 20px #00ffff; margin-bottom: 5px; font-style: italic; }
+        
+        .selection-split-layout { display: flex; width: 100%; gap: 15px; height: 65%; max-height: 420px; margin-bottom: 15px; }
+        .boards-column { flex: 1; display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; overflow-y: auto; padding: 5px; }
+
+        .selection-card {
+            background: #15161e; border: 3px solid #333; border-radius: 10px;
+            padding: 10px; cursor: pointer; text-align: center; display: flex; flex-direction: column; justify-content: center; align-items: center;
+            touch-action: manipulation;
+        }
+        .selection-card.selected { border-color: #00ffff; background: #1a2a3a; box-shadow: 0 0 15px #00ffff; }
+        .card-glyph { font-size: 1.8rem; margin-bottom: 3px; }
+        .card-lbl { font-size: 0.9rem; color: #fff; text-transform: uppercase; }
+
+        .grid-container { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 10px 0; max-height: 240px; overflow-y: auto; width: 100%; }
+
+        #main-arena-layout { display: flex; flex-direction: column; width: 100%; height: 100%; position: relative; }
+        .controls-ticker-hud { width: 100%; background: #12131c; border-bottom: 2px solid #222; display: flex; justify-content: space-around; align-items: center; padding: 6px; font-size: 0.7rem; color: #00ffff; font-family: monospace; }
+
+        .arena-canvas-split { display: flex; flex: 1; width: 100%; overflow: hidden; position: relative; flex-direction: row; }
+        #canvas-board-viewport { flex: 1; height: 100%; background: #030305; position: relative; overflow: hidden; }
+        #board-master-canvas { width: 100%; height: 100%; display: block; touch-action: none; }
+
+        #intersection-decision-hud {
+            position: absolute; 
+            bottom: 20px; 
+            left: 50%; 
+            transform: translateX(-50%); 
+            background: rgba(8, 8, 20, 0.96);
+            border: 2px solid #00ffff; 
+            border-radius: 14px; 
+            padding: 12px; 
+            display: none;
+            flex-direction: column; 
+            align-items: center;
+            gap: 8px; 
+            z-index: 100005; 
+            width: 85%;
+            box-shadow: 0 0 25px rgba(0,255,255,0.4);
+        }
+        .choice-branch-btn {
+            background: #1a1c29; border: 2px solid #444; color: #aaa;
+            padding: 10px 14px; border-radius: 8px; font-size: 0.85rem; cursor: pointer;
+            text-transform: uppercase; width: 100%; font-weight: bold;
+            transition: all 0.15s ease;
+            touch-action: manipulation;
+        }
+        .choice-branch-btn.primed-intent {
+            background: #004455; border-color: #00ffff; color: #fff; box-shadow: 0 0 10px #00ffff;
+        }
+
+        #hud-sidebar { width: 250px; height: 100%; background: var(--panel-bg); border-left: 3px solid #1a1a26; display: flex; flex-direction: column; padding: 8px; justify-content: space-between; z-index: 100; }
+        .hud-top-meta { font-size: 1.2rem; color: var(--gold); text-align: center; border-bottom: 2px dashed #333; padding-bottom: 4px; }
+        
+        .player-leaderboard-matrix { flex: 1; max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 3px; margin: 5px 0; }
+        .p-matrix-row { display: flex; align-items: center; background: rgba(0,0,0,0.4); padding: 4px 6px; border-radius: 4px; font-family: monospace; font-size: 0.7rem; }
+        .p-matrix-row.active-now { background: rgba(255,255,255,0.15); border: 1px solid #00ffff; }
+        .p-matrix-color-dot { width: 12px; height: 12px; border-radius: 50%; margin-right: 5px; flex-shrink: 0; }
+        .p-matrix-uid { flex: 1; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }
+        .p-matrix-assets { display: flex; gap: 6px; font-size: 0.75rem; font-weight: bold; }
+
+        .ingame-legend-box {
+            background: rgba(0,0,0,0.4); border: 1px solid #222; border-radius: 6px;
+            padding: 6px; display: flex; flex-direction: column; gap: 4px;
+            font-family: monospace; font-size: 0.7rem; margin: 4px 0;
+        }
+        .ingame-legend-title { text-align: center; color: #00ffff; font-size: 0.65rem; font-weight: bold; text-transform: uppercase; border-bottom: 1px solid #222; padding-bottom: 2px; margin-bottom: 2px; }
+        .ingame-legend-row { display: flex; align-items: center; gap: 6px; }
+        .ingame-legend-dot { width: 10px; height: 10px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.3); flex-shrink: 0; }
+
+        .interaction-hub { background: rgba(0,0,0,0.5); border: 1px solid #333; border-radius: 8px; padding: 6px; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        .dice-sphere { width: 44px; height: 44px; background: radial-gradient(circle, #fff 30%, #aaa 100%); color: #000; border-radius: 8px; font-size: 1.4rem; display: flex; align-items: center; justify-content: center; cursor: pointer; touch-action: manipulation; }
+        .dice-sphere.spinning { animation: diceSpin 0.05s infinite alternate; background: #ff00ff; color: #fff; }
+        @keyframes diceSpin { 0% { transform: scale(1.05) rotate(3deg); } 100% { transform: scale(0.95) rotate(-3deg); } }
+
+        #frenzy-alert-banner { position: absolute; top: 35%; left: 50%; transform: translate(-50%, -50%) scale(0); background: linear-gradient(135deg, #ff0055, #9900ff); color: white; border: 3px solid #fff; border-radius: 12px; padding: 15px 30px; font-size: 1.6rem; z-index: 100010; pointer-events: none; text-align: center; transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.4); }
+        #frenzy-alert-banner.pop { transform: translate(-50%, -50%) scale(1); }
+
+        .mode-toggle-container { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; background: rgba(255,255,255,0.05); padding: 6px 12px; border-radius: 20px; justify-content: center; }
+        .mode-btn { background: none; border: none; color: #666; font-size: 0.85rem; cursor: pointer; text-transform: uppercase; padding: 4px 8px; touch-action: manipulation; }
+        .mode-btn.active { color: #00ffff; text-shadow: 0 0 6px #00ffff; }
+
+        @media (max-width: 768px) {
+            #app-window { border: none; border-radius: 0; }
+            .arena-canvas-split { flex-direction: column-reverse; }
+            #hud-sidebar { width: 100%; height: 160px; border-left: none; border-top: 3px solid #1a1a26; flex-direction: row; gap: 4px; padding-bottom: 45px; }
+            .player-leaderboard-matrix { max-height: 100%; }
+            .ingame-legend-box { display: none; }
+            .interaction-hub { width: 90px; justify-content: center; }
+            .header-title { font-size: 1.5rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="app-window">
+    
+    <div class="arcade-pulse-bg"></div>
+    <div id="frenzy-alert-banner">ROUND 1</div>
+
+    <!-- MAIN PLATFORM LINK LAYER -->
+    <div class="persistent-navigation-tray">
+        <button id="global-portal-hub-btn" onclick="navigateToMainMenuPortal('/')">🏠 Home Menu</button>
+        <button id="internal-system-back-btn" onclick="executeInternalSetupBackStep()">↩ Back</button>
+    </div>
+
+    <!-- SCREEN 1: START SCREEN -->
+    <div id="scr-title" class="screen active">
+        <div class="header-title" style="font-size: 2.8rem; line-height: 1.1;">COLOR PARTY<br><span style="background: var(--rainbow); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 3.6rem;">FRENZY</span></div>
+        <div style="color: #66efad; font-size: 0.85rem; margin-bottom: 30px; letter-spacing: 2px;">INTERSECTION PRO FLASH MATRIX</div>
+        <button class="btn-frenzy" onclick="transitionToBoardSelection()">ENTER SYSTEM</button>
+    </div>
+
+    <!-- SCREEN 2: ALL 5 DISTINCT BOARDS -->
+    <div id="scr-board-select" class="screen" style="background: transparent;">
+        <div class="header-title">SELECT TOURING SPACE</div>
+        <div class="selection-split-layout">
+            <div class="boards-column" id="dom-boards-grid"></div>
+        </div>
+        <button class="btn-frenzy" id="btn-board-next" style="opacity: 0.3; pointer-events:none;" onclick="transitionToPlayerCountSelection()">CHOOSE PARTY MATRIX</button>
+    </div>
+
+    <!-- SCREEN 3: 12-PLAYER LOBBY MAX SETTINGS -->
+    <div id="scr-mode-select" class="screen" style="background: transparent;">
+        <div class="header-title" style="font-size: 1.3rem; margin-bottom: 5px;">TOURNAMENT DURATION</div>
+        <div class="mode-toggle-container">
+            <button class="mode-btn rnd-tgt" id="rbtn-3" onclick="setRoundLimitConfig(3)">3 Rounds</button>
+            <button class="mode-btn rnd-tgt" id="rbtn-5" onclick="setRoundLimitConfig(5)">5 Rounds</button>
+            <button class="mode-btn rnd-tgt" id="rbtn-10" onclick="setRoundLimitConfig(10)">10 Rounds</button>
+        </div>
+
+        <div class="header-title" style="font-size: 1.3rem; margin-top: 10px; margin-bottom: 5px;">FIELD CAPACITY (MAX 12)</div>
+        <div class="mode-toggle-container">
+            <button class="mode-btn" id="tbtn-4" onclick="setTotalLobbySizeConfig(4)">4 Players</button>
+            <button class="mode-btn" id="tbtn-8" onclick="setTotalLobbySizeConfig(8)">8 Players</button>
+            <button class="mode-btn" id="tbtn-12" onclick="setTotalLobbySizeConfig(12)">12 Players</button>
+        </div>
+
+        <div class="header-title" style="font-size: 1.3rem; margin-top: 10px; margin-bottom: 5px;">HUMAN CONTROLLERS</div>
+        <div class="mode-toggle-container" id="dom-human-btn-box"></div>
+        
+        <button class="btn-frenzy" style="margin-top:10px;" onclick="transitionToCharacterSelection()">CHOOSE COLORS</button>
+    </div>
+
+    <!-- SCREEN 4: 12 CHARACTERS COLOR SELECTION GRID -->
+    <div id="scr-char-select" class="screen" style="background: transparent;">
+        <div class="header-title" id="lbl-char-assignment-title" style="font-size: 1.3rem;">ASSIGN COLOR SPECTRUM</div>
+        <div class="grid-container" id="dom-chars-grid"></div>
+        <button class="btn-frenzy" id="btn-char-next" style="opacity: 0.3; pointer-events:none;" onclick="processPlayerCharacterSelectionConfirm()">LOCK SPECTRUM</button>
+    </div>
+
+    <!-- SCREEN 5: GAMEPLAY ARENA -->
+    <div id="scr-board-gameplay" class="screen" style="padding: 0; overflow: hidden; background: transparent;">
+        <div id="main-arena-layout">
+            <div class="controls-ticker-hud" id="board-persistent-controls-hud">🎯 BLUE LINES &amp; ARROWS INDICATE FLOW DIRECTION. TAP BRANCH OPTION BUTTON TO PREVIEW DIRECTION SHIFT.</div>
+            
+            <div class="arena-canvas-split">
+                <div id="canvas-board-viewport">
+                    <div id="intersection-decision-hud">
+                        <div style="color:#00ffff; font-size:0.8rem; text-transform:uppercase; letter-spacing:1px;" id="lbl-split-title-prompt">Preview Track Direction</div>
+                        <div id="dom-branch-buttons-box" style="display:flex; flex-direction:column; gap:6px; width:100%;"></div>
+                    </div>
+                    <canvas id="board-master-canvas"></canvas>
+                </div>
+                
+                <div id="hud-sidebar">
+                    <div style="display:flex; flex-direction:column; justify-content:center;">
+                        <div class="hud-top-meta">ROUND <span id="lbl-hud-round">1</span>/<span id="lbl-hud-round-total">5</span></div>
+                    </div>
+                    
+                    <!-- LEADERBOARD MATRIX -->
+                    <div class="player-leaderboard-matrix" id="dom-leaderboard-matrix-container"></div>
+                    
+                    <!-- IN-GAME CODES DECODER HUB -->
+                    <div class="ingame-legend-box">
+                        <div class="ingame-legend-title">Space Meaning Map</div>
+                        <div class="ingame-legend-row"><div class="ingame-legend-dot" style="background:#1e88e5;"></div><span>Blue: +5 Coins</span></div>
+                        <div class="ingame-legend-row"><div class="ingame-legend-dot" style="background:#e53935;"></div><span>Red: -5 Coins</span></div>
+                        <div class="ingame-legend-row"><div class="ingame-legend-dot" style="background:#00acc1;"></div><span>Lucky: +15 Coins</span></div>
+                        <div class="ingame-legend-row"><div class="ingame-legend-dot" style="background:#ffeb3b;"></div><span>Star: Buy Star (10c)</span></div>
+                    </div>
+
+                    <div class="interaction-hub">
+                        <div style="font-size: 0.6rem; color: #00ffff; text-align:center;" id="lbl-dice-turn-owner">SYSTEM INDEX</div>
+                        <div class="dice-sphere" id="dom-dice-box" onclick="rollActiveDiceSequence()">🎲</div>
+                        <button class="btn-frenzy" id="btn-board-continue-step" style="font-size: 0.75rem; padding: 6px 15px; display: none;" onclick="completeActiveTurnExecution()">CONT</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCREEN 6: FINALE SCOREBOARD -->
+    <div id="scr-grand-finale" class="screen">
+        <div class="header-title" style="font-size: 2.2rem;">TOURNAMENT CONCLUDED</div>
+        <h2 id="lbl-grand-winner-announcement" style="color: var(--gold); font-size: 1.3rem; margin-bottom: 15px; text-align:center;"></h2>
+        <div id="dom-finale-rankings-scrollbox" style="width: 100%; max-width: 500px; height: 220px; overflow-y: auto; background: rgba(0,0,0,0.6); border: 2px solid #333; padding: 10px; border-radius: 8px; margin-bottom: 20px;"></div>
+        <button class="btn-frenzy" onclick="window.location.reload()">RE-PLAY</button>
+    </div>
+
+</div>
+
+<script>
+    const COLOR_GUILDS = [
+        { id: 0, name: "Red", fill: "#ff3333", glyph: "🔴" },
+        { id: 1, name: "Orange", fill: "#ff9433", glyph: "🟠" },
+        { id: 2, name: "Yellow", fill: "#ffeb3b", glyph: "🟡" },
+        { id: 3, name: "Green", fill: "#4bc04f", glyph: "🟢" },
+        { id: 4, name: "Blue", fill: "#3399ff", glyph: "🔵" },
+        { id: 5, name: "Purple", fill: "#a333ff", glyph: "🟣" },
+        { id: 6, name: "Pink", fill: "#ff33a3", glyph: "🌸" },
+        { id: 7, name: "Teal", fill: "#008080", glyph: "🔷" },
+        { id: 8, name: "Lime", fill: "#aeff00", glyph: "❇️" },
+        { id: 9, name: "Cyan", fill: "#00ffff", glyph: "💎" },
+        { id: 10, name: "Gold", fill: "#ffca28", glyph: "👑" },
+        { id: 11, name: "White", fill: "#ffffff", glyph: "🏳️" }
+    ];
+
+    const BOARDS_CATALOG = [
+        { name: "Magma Loop", icon: "🌋" },
+        { name: "Chrono Orbit", icon: "🪐" },
+        { name: "Neon Grid", icon: "🌐" },
+        { name: "Frost Ascent", icon: "🏔️" },
+        { name: "Frenzy Matrix", icon: "⚡" }
+    ];
+
+    let state = {
+        boardIdx: null, totalLobbyCount: 4, humanCount: 1, players: [], humanProfiles: [], 
+        activeTurnPointer: 0, currentRound: 1, maxRounds: 5, graphSpaces: [], 
+        isDiceRolling: false, hoveredNodeTarget: null, selectedCharIdx: null  
+    };
+
+    let movementTracker = { remainingSteps: 0, activePlayerObj: null };
+    let viewScaleX = 1, viewScaleY = 1;
+    let currentScreenId = "scr-title";
+    let transientSelectorStep = 0;
+
+    function navigateToMainMenuPortal(targetUrl) {
+        if (currentScreenId === "scr-board-gameplay") {
+            if (!confirm("Are you sure you want to exit the current match and return to the main website menu?")) {
+                return;
+            }
+        }
+        window.location.href = targetUrl; 
+    }
+
+    function updateNavigationButtonStateUI() {
+        const backBtn = document.getElementById('internal-system-back-btn');
+        if (currentScreenId === "scr-title" || currentScreenId === "scr-grand-finale") {
+            backBtn.style.display = "none";
+        } else {
+            backBtn.style.display = "block";
+        }
+    }
+
+    function executeInternalSetupBackStep() {
+        if (state.isDiceRolling || movementTracker.remainingSteps > 0) return;
+        
+        if (currentScreenId === "scr-board-select") {
+            setActiveScreenContainer("scr-title");
+        } else if (currentScreenId === "scr-mode-select") {
+            transitionToBoardSelection();
+        } else if (currentScreenId === "scr-char-select") {
+            if (transientSelectorStep > 0) {
+                transientSelectorStep--; state.humanProfiles.pop(); state.selectedCharIdx = null; buildSpectrumSelectorGrid();
+            } else {
+                setActiveScreenContainer('scr-mode-select');
+            }
+        } else if (currentScreenId === "scr-board-gameplay") {
+            if (confirm("Reset current match data back to lobby generation variables?")) {
+                setActiveScreenContainer("scr-mode-select");
+            }
+        }
+    }
+
+    function buildBranchingGraphNodes(boardTypeIndex) {
+        let nodes = [];
+        let rTypes = ["blue", "blue", "blue", "red", "lucky"];
+        
+        function addNode(x, y, forcedType = null) {
+            let t = forcedType || rTypes[Math.floor(Math.random() * rTypes.length)];
+            nodes.push({ id: nodes.length, x: x, y: y, type: t, nextIndices: [] });
+            return nodes.length - 1;
+        }
+
+        if (boardTypeIndex === 0) { 
+            // 🌋 BOARD 1: MAGMA LOOP
+            addNode(150, 350, "blue");  
+            addNode(220, 200, "blue");  
+            addNode(360, 200, "red");   
+            addNode(430, 350, "lucky"); 
+            addNode(360, 500, "blue");  
+            addNode(220, 500, "red");   
+            addNode(570, 200, "blue");  
+            addNode(710, 200, "star");  
+            addNode(780, 350, "blue");  
+            addNode(710, 500, "lucky"); 
+            addNode(570, 500, "blue");  
+            addNode(500, 350, "blue");  
+
+            nodes[0].nextIndices.push(1); nodes[1].nextIndices.push(2); nodes[2].nextIndices.push(3);
+            nodes[3].nextIndices.push(6); nodes[3].nextIndices.push(4); 
+            nodes[4].nextIndices.push(5); nodes[5].nextIndices.push(0);
+            nodes[6].nextIndices.push(7); nodes[7].nextIndices.push(8); nodes[8].nextIndices.push(9);
+            nodes[9].nextIndices.push(10); nodes[10].nextIndices.push(11);
+            nodes[11].nextIndices.push(0); nodes[11].nextIndices.push(6); 
+            
+        } else if (boardTypeIndex === 1) {
+            // 🪐 BOARD 2: CHRONO ORBIT
+            let circleCount = 12;
+            for(let i=0; i<circleCount; i++) {
+                let angle = (i / circleCount) * Math.PI * 2;
+                addNode(430 + Math.cos(angle)*200, 350 + Math.sin(angle)*200, i===3?"star":null);
+            }
+            for(let i=0; i<circleCount; i++) {
+                nodes[i].nextIndices.push((i + 1) % circleCount);
+            }
+            let midLeft = addNode(330, 350, "lucky");
+            let midRight = addNode(530, 350, "blue");
+            nodes[1].nextIndices.push(midLeft);
+            nodes[midLeft].nextIndices.push(midRight);
+            nodes[midRight].nextIndices.push(7);
+
+        } else if (boardTypeIndex === 2) {
+            // 🌐 BOARD 3: NEON GRID
+            let t1 = addNode(200, 150, "blue");  
+            let t2 = addNode(430, 150, "blue");  
+            let t3 = addNode(660, 150, "star");  
+            let r1 = addNode(660, 350, "red");   
+            let b1 = addNode(660, 550, "blue");  
+            let b2 = addNode(430, 550, "lucky"); 
+            let b3 = addNode(200, 550, "blue");  
+            let l1 = addNode(200, 350, "red");   
+
+            nodes[0].nextIndices.push(1); nodes[1].nextIndices.push(2); nodes[2].nextIndices.push(3);
+            nodes[3].nextIndices.push(4); nodes[4].nextIndices.push(5); nodes[5].nextIndices.push(6);
+            nodes[6].nextIndices.push(7); nodes[7].nextIndices.push(0);
+
+            let inner1 = addNode(350, 300, "lucky");
+            let inner2 = addNode(510, 400, "blue");
+            nodes[1].nextIndices.push(inner1);
+            nodes[inner1].nextIndices.push(inner2);
+            nodes[inner2].nextIndices.push(5);
+
+        } else if (boardTypeIndex === 3) {
+            // 🏔️ BOARD 4: FROST ASCENT
+            let p0 = addNode(150, 550, "blue");
+            let p1 = addNode(300, 500, "blue");
+            let p2 = addNode(450, 480, "red");
+            let p3 = addNode(600, 420, "lucky");
+            let p4 = addNode(700, 300, "blue");
+            let p5 = addNode(580, 180, "star");
+            let p6 = addNode(400, 200, "blue");
+            let p7 = addNode(250, 280, "red");
+            let p8 = addNode(180, 400, "lucky");
+
+            nodes[p0].nextIndices.push(p1); nodes[p1].nextIndices.push(p2); nodes[p2].nextIndices.push(p3);
+            nodes[p3].nextIndices.push(p4); nodes[p4].nextIndices.push(p5); nodes[p5].nextIndices.push(p6);
+            nodes[p6].nextIndices.push(p7); nodes[p7].nextIndices.push(p8); nodes[p8].nextIndices.push(p0);
+
+            let dropNode = addNode(430, 350, "red");
+            nodes[p6].nextIndices.push(dropNode);
+            dropNode.nextIndices.push(p2);
+
+        } else {
+            // ⚡ BOARD 5: FRENZY MATRIX
+            let center = addNode(430, 350, "lucky"); 
+            let l_1 = addNode(280, 350, "blue");
+            let l_2 = addNode(150, 350, "star");
+            nodes[center].nextIndices.push(l_1); nodes[l_1].nextIndices.push(l_2);
+            let t_1 = addNode(430, 230, "blue");
+            let t_2 = addNode(430, 100, "red");
+            nodes[l_2].nextIndices.push(t_2); nodes[t_2].nextIndices.push(t_1); nodes[t_1].nextIndices.push(center);
+            let r_1 = addNode(580, 350, "blue");
+            let r_2 = addNode(710, 350, "lucky");
+            nodes[center].nextIndices.push(r_1); nodes[r_1].nextIndices.push(r_2);
+            let b_1 = addNode(430, 470, "blue");
+            let b_2 = addNode(430, 600, "red");
+            nodes[r_2].nextIndices.push(b_2); nodes[b_2].nextIndices.push(b_1); nodes[b_1].nextIndices.push(center);
+        }
+
+        return nodes;
+    }
+
+    function setActiveScreenContainer(id) {
+        currentScreenId = id;
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        const target = document.getElementById(id);
+        if (target) target.classList.add('active');
+        updateNavigationButtonStateUI();
+        if (id === 'scr-board-gameplay') { resizeGameCanvasViewport(); }
+    }
+
+    function resizeGameCanvasViewport() {
+        const canv = document.getElementById('board-master-canvas'); if (!canv) return;
+        const rect = canv.parentElement.getBoundingClientRect();
+        canv.width = rect.width; canv.height = rect.height;
+        viewScaleX = rect.width / 860; viewScaleY = rect.height / 710;
+    }
+    window.addEventListener('resize', resizeGameCanvasViewport);
+
+    function spawnFrenzyAlertNotification(text, callback) {
+        const banner = document.getElementById('frenzy-alert-banner');
+        banner.innerText = text; banner.classList.add('pop');
+        setTimeout(() => { banner.classList.remove('pop'); if(callback) callback(); }, 1200);
+    }
+
+    function transitionToBoardSelection() {
+        const container = document.getElementById('dom-boards-grid'); container.innerHTML = "";
+        BOARDS_CATALOG.forEach((bd, idx) => {
+            let card = document.createElement('div'); card.className = "selection-card"; card.id = `board-card-${idx}`;
+            card.onclick = () => {
+                state.boardIdx = idx;
+                document.querySelectorAll('#dom-boards-grid .selection-card').forEach(c => c.classList.remove('selected'));
+                card.classList.add('selected');
+                let btn = document.getElementById('btn-board-next'); btn.style.opacity = "1"; btn.style.pointerEvents = "all";
+            };
+            card.innerHTML = `<div class="card-glyph">${bd.icon}</div><div class="card-lbl">${bd.name}</div>`;
+            container.appendChild(card);
+        });
+        setActiveScreenContainer('scr-board-select');
+    }
+
+    function transitionToPlayerCountSelection() {
+        setActiveScreenContainer('scr-mode-select');
+        setRoundLimitConfig(5); setTotalLobbySizeConfig(4);
+    }
+
+    function setRoundLimitConfig(rounds) {
+        state.maxRounds = rounds;
+        document.querySelectorAll('.rnd-tgt').forEach(b => b.classList.remove('active'));
+        document.getElementById(`rbtn-${rounds}`).classList.add('active');
+    }
+
+    function setTotalLobbySizeConfig(size) {
+        state.totalLobbyCount = size;
+        document.querySelectorAll('[id^="tbtn-"]').forEach(b => b.classList.remove('active'));
+        document.getElementById(`tbtn-${size}`).classList.add('active');
+
+        const box = document.getElementById('dom-human-btn-box'); box.innerHTML = "";
+        for (let i = 1; i <= Math.min(size, 4); i++) {
+            let btn = document.createElement('button'); btn.className = "mode-btn"; btn.id = `mbtn-${i}`;
+            btn.innerText = `${i} Player${i > 1 ? 's' : ''}`;
+            btn.onclick = () => {
+                state.humanCount = i;
+                document.querySelectorAll('[id^="mbtn-"]').forEach(b => b.classList.remove('active'));
+                document.getElementById(`mbtn-${i}`).classList.add('active');
+            };
+            box.appendChild(btn);
+        }
+        state.humanCount = 1; if(document.getElementById('mbtn-1')) document.getElementById('mbtn-1').classList.add('active');
+    }
+
+    function transitionToCharacterSelection() {
+        transientSelectorStep = 0; state.humanProfiles = []; state.selectedCharIdx = null; buildSpectrumSelectorGrid();
+        setActiveScreenContainer('scr-char-select');
+    }
+
+    function buildSpectrumSelectorGrid() {
+        document.getElementById('lbl-char-assignment-title').innerText = `P${transientSelectorStep + 1}: CHOOSE CHARACTER SPECTRUM`;
+        const container = document.getElementById('dom-chars-grid'); container.innerHTML = "";
+
+        COLOR_GUILDS.forEach((cg, idx) => {
+            let isClaimed = state.humanProfiles.includes(idx);
+            let card = document.createElement('div'); card.className = "selection-card";
+            if(isClaimed) card.style.opacity = "0.2";
+            card.id = `char-card-${idx}`;
+            card.onclick = () => {
+                if(isClaimed) return; 
+                state.selectedCharIdx = idx;
+                document.querySelectorAll('#dom-chars-grid .selection-card').forEach(c => c.classList.remove('selected'));
+                card.classList.add('selected');
+                let btn = document.getElementById('btn-char-next'); btn.style.opacity = "1"; btn.style.pointerEvents = "all";
+            };
+            card.innerHTML = `<div class="card-glyph" style="color:${cg.fill};">${cg.glyph}</div><div class="card-lbl">${cg.name}</div>`;
+            container.appendChild(card);
+        });
+        document.getElementById('btn-char-next').style.opacity = "0.3";
+        document.getElementById('btn-char-next').style.pointerEvents = "none";
+    }
+
+    function processPlayerCharacterSelectionConfirm() {
+        if (state.selectedCharIdx === null || state.selectedCharIdx === undefined) return;
+        
+        state.humanProfiles.push(state.selectedCharIdx); 
+        state.selectedCharIdx = null;
+        transientSelectorStep++;
+        
+        if (transientSelectorStep < state.humanCount) { buildSpectrumSelectorGrid(); } 
+        else { initializeAggregateFieldEngine(); }
+    }
+
+    function initializeAggregateFieldEngine() {
+        state.players = []; state.graphSpaces = buildBranchingGraphNodes(state.boardIdx || 0);
+
+        for(let i=0; i<state.humanCount; i++) {
+            state.players.push({ id: i, guildIdx: state.humanProfiles[i], coins: 15, stars: 0, boardPos: 0, isAI: false, playerTag: `P${i+1}` });
+        }
+        for(let k=0; k<12; k++) {
+            if(state.players.length >= state.totalLobbyCount) break;
+            if(!state.humanProfiles.includes(k)) {
+                state.players.push({ id: state.players.length, guildIdx: k, coins: 15, stars: 0, boardPos: 0, isAI: true, playerTag: `COM${k}` });
+            }
+        }
+        state.activeTurnPointer = 0; state.currentRound = 1;
+        document.getElementById('lbl-hud-round-total').innerText = state.maxRounds;
+
+        setActiveScreenContainer('scr-board-gameplay');
+        syncLeaderboardHUDMatrix(); runCanvasBoardRenderPipelineLoop(); launchActiveTurnCycleProcessor();
+    }
+
+    function syncLeaderboardHUDMatrix() {
+        document.getElementById('lbl-hud-round').innerText = state.currentRound;
+        let sorted = [...state.players].sort((a,b) => (b.stars * 1000 + b.coins) - (a.stars * 1000 + a.coins));
+        const scrollbox = document.getElementById('dom-leaderboard-matrix-container'); scrollbox.innerHTML = "";
+
+        sorted.forEach((p) => {
+            let info = COLOR_GUILDS[p.guildIdx];
+            let isCurrent = state.players[state.activeTurnPointer] && (p.id === state.players[state.activeTurnPointer].id);
+            let row = document.createElement('div'); row.className = `p-matrix-row ${isCurrent ? 'active-now' : ''}`;
+            row.innerHTML = `
+                <div class="p-matrix-color-dot" style="background:${info.fill};"></div>
+                <div class="p-matrix-uid">${p.playerTag}</div>
+                <div class="p-matrix-assets"><span>🪙${p.coins}</span><span>⭐${p.stars}</span></div>
+            `;
+            scrollbox.appendChild(row);
+        });
+    }
+
+    function runCanvasBoardRenderPipelineLoop() {
+        const canv = document.getElementById('board-master-canvas'); if(!canv) return;
+        const ctx = canv.getContext('2d');
+        
+        function frame() {
+            if (currentScreenId === 'scr-board-gameplay') {
+                ctx.clearRect(0, 0, canv.width, canv.height);
+
+                // DRAW FLOW DIRECTIONS WITH TRACKING TRAILS
+                state.graphSpaces.forEach(sp => {
+                    sp.nextIndices.forEach(nxtId => {
+                        let targetNode = state.graphSpaces[nxtId];
+                        if(targetNode) {
+                            let ox = sp.x * viewScaleX; let oy = sp.y * viewScaleY;
+                            let dx = targetNode.x * viewScaleX; let dy = targetNode.y * viewScaleY;
+
+                            ctx.save(); 
+                            ctx.strokeStyle = "rgba(0, 160, 255, 0.45)";
+                            ctx.lineWidth = 4; ctx.beginPath();
+                            ctx.moveTo(ox, oy); ctx.lineTo(dx, dy);
+                            ctx.stroke(); 
+
+                            let midX = (ox + dx) / 2; let midY = (oy + dy) / 2;
+                            let angle = Math.atan2(dy - oy, dx - ox);
+                            ctx.fillStyle = "rgba(0, 230, 255, 0.8)";
+                            ctx.beginPath();
+                            ctx.moveTo(midX, midY);
+                            ctx.lineTo(midX - 8 * Math.cos(angle - Math.PI/6), midY - 8 * Math.sin(angle - Math.PI/6));
+                            ctx.lineTo(midX - 8 * Math.cos(angle + Math.PI/6), midY - 8 * Math.sin(angle + Math.PI/6));
+                            ctx.closePath(); ctx.fill();
+                            ctx.restore();
+                        }
+                    });
+                });
+
+                // DRAW THE ACTUAL ROUND FIELD CONNECTIONS
+                state.graphSpaces.forEach(sp => {
+                    let baseColor = "#1e88e5";
+                    if(sp.type === "red") baseColor = "#e53935";
+                    if(sp.type === "lucky") baseColor = "#00acc1";
+                    if(sp.type === "star") baseColor = "#ffeb3b";
+
+                    ctx.fillStyle = baseColor; ctx.beginPath(); ctx.arc(sp.x * viewScaleX, sp.y * viewScaleY, 11, 0, Math.PI*2); ctx.fill();
+                    ctx.strokeStyle = sp.nextIndices.length > 1 ? "#00ffff" : "#fff";
+                    ctx.lineWidth = 2; ctx.stroke();
+                });
+
+                // BRANCH PREVIEWING SYSTEM VISUALS
+                if (state.hoveredNodeTarget && movementTracker.activePlayerObj) {
+                    let originNode = state.graphSpaces[movementTracker.activePlayerObj.boardPos];
+                    let destNode = state.hoveredNodeTarget;
+                    if (originNode && destNode) {
+                        ctx.save();
+                        let pulseIntensity = 0.6 + Math.sin(Date.now() / 100) * 0.3;
+                        ctx.strokeStyle = `rgba(255, 0, 150, ${pulseIntensity})`;
+                        ctx.fillStyle = `rgba(255, 0, 150, ${pulseIntensity})`;
+                        ctx.lineWidth = 6;
+
+                        let ox = originNode.x * viewScaleX; let oy = originNode.y * viewScaleY;
+                        let dx = destNode.x * viewScaleX; let dy = destNode.y * viewScaleY;
+                        
+                        let angle = Math.atan2(dy - oy, dx - ox);
+                        let arrowLength = 55;
+                        let tx = ox + Math.cos(angle) * arrowLength;
+                        let ty = oy + Math.sin(angle) * arrowLength;
+
+                        ctx.beginPath(); ctx.moveTo(ox, oy); ctx.lineTo(tx, ty); ctx.stroke();
+
+                        ctx.beginPath(); ctx.moveTo(tx, ty);
+                        ctx.lineTo(tx - 14 * Math.cos(angle - Math.PI/6), ty - 14 * Math.sin(angle - Math.PI/6));
+                        ctx.lineTo(tx - 14 * Math.cos(angle + Math.PI/6), ty - 14 * Math.sin(angle + Math.PI/6));
+                        ctx.closePath(); ctx.fill(); ctx.restore();
+                    }
+                }
+
+                // RENDERING AVATARS
+                state.players.forEach(p => {
+                    let node = state.graphSpaces[p.boardPos];
+                    if(node) {
+                        let colorProfile = COLOR_GUILDS[p.guildIdx];
+                        let px = node.x * viewScaleX + ((p.id % 4) * 6 - 9);
+                        let py = node.y * viewScaleY - 14 - (Math.floor(p.id / 4) * 6);
+                        
+                        ctx.fillStyle = colorProfile.fill; ctx.beginPath(); ctx.arc(px, py, 7, 0, Math.PI*2); ctx.fill();
+                        ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5; ctx.stroke();
+
+                        if (movementTracker.activePlayerObj && movementTracker.activePlayerObj.id === p.id && movementTracker.remainingSteps > 0) {
+                            ctx.save();
+                            ctx.font = "bold 12px monospace"; ctx.fillStyle = "#00ffff"; ctx.shadowColor = "#00ffff"; ctx.shadowBlur = 6; ctx.textAlign = "center";
+                            ctx.fillText(`[${movementTracker.remainingSteps}]`, px, py - 14);
+                            ctx.restore();
+                        }
+                    }
+                });
+            }
+            requestAnimationFrame(frame);
+        }
+        frame();
+    }
+
+    function launchActiveTurnCycleProcessor() {
+        syncLeaderboardHUDMatrix(); updateNavigationButtonStateUI();
+        let p = state.players[state.activeTurnPointer];
+        document.getElementById('btn-board-continue-step').style.display = "none";
+        document.getElementById('lbl-dice-turn-owner').innerText = p.playerTag;
+
+        if (p.isAI) {
+            document.getElementById('dom-dice-box').style.pointerEvents = "none";
+            setTimeout(rollActiveDiceSequence, 400);
+        } else {
+            document.getElementById('dom-dice-box').style.pointerEvents = "all";
+        }
+    }
+
+    function rollActiveDiceSequence() {
+        if(state.isDiceRolling) return;
+        state.isDiceRolling = true;
+        document.getElementById('dom-dice-box').classList.add('spinning');
+
+        let ticks = 0, rollVal = 1;
+        let inv = setInterval(() => {
+            rollVal = Math.floor(Math.random() * 6) + 1;
+            document.getElementById('dom-dice-box').innerText = rollVal; ticks++;
+            if(ticks > 8) {
+                clearInterval(inv); document.getElementById('dom-dice-box').classList.remove('spinning');
+                state.isDiceRolling = false;
+                movementTracker.remainingSteps = rollVal;
+                movementTracker.activePlayerObj = state.players[state.activeTurnPointer];
+                executeNextStepMovementCycle();
+            }
+        }, 60);
+    }
+
+    function executeNextStepMovementCycle() {
+        let p = movementTracker.activePlayerObj;
+        if (movementTracker.remainingSteps <= 0) { evaluateGraphSpaceLandingPenaltyAndRewards(); return; }
+
+        let currentNode = state.graphSpaces[p.boardPos];
+        if (currentNode.nextIndices.length > 1) {
+            if (p.isAI) {
+                p.boardPos = currentNode.nextIndices[Math.floor(Math.random() * currentNode.nextIndices.length)];
+                movementTracker.remainingSteps--; setTimeout(executeNextStepMovementCycle, 180);
+            } else { promptHumanIntersectionSelection(currentNode); }
+            return;
+        }
+
+        p.boardPos = currentNode.nextIndices.length === 1 ? currentNode.nextIndices[0] : 0;
+        movementTracker.remainingSteps--; syncLeaderboardHUDMatrix();
+        setTimeout(executeNextStepMovementCycle, 180);
+    }
+
+    let currentlyPrimedNodeIndex = null;
+
+    function promptHumanIntersectionSelection(currentNode) {
+        const hudMenu = document.getElementById('intersection-decision-hud');
+        const optionsBox = document.getElementById('dom-branch-buttons-box');
+        optionsBox.innerHTML = ""; hudMenu.style.display = "flex";
+        
+        state.hoveredNodeTarget = null;
+        currentlyPrimedNodeIndex = null;
+        document.getElementById('lbl-split-title-prompt').innerText = "SELECT INTERSECTION TRAIL VIA PATH OPTION";
+
+        currentNode.nextIndices.forEach((nodeIdx, idx) => {
+            let targetNode = state.graphSpaces[nodeIdx];
+            let btn = document.createElement('button'); btn.className = "choice-branch-btn";
+            btn.innerText = `Track Direction Option ${idx + 1} (Tap to Preview)`;
+            
+            btn.onclick = () => {
+                if (currentlyPrimedNodeIndex === nodeIdx) {
+                    hudMenu.style.display = "none"; state.hoveredNodeTarget = null; currentlyPrimedNodeIndex = null;
+                    movementTracker.activePlayerObj.boardPos = nodeIdx; movementTracker.remainingSteps--;
+                    syncLeaderboardHUDMatrix(); setTimeout(executeNextStepMovementCycle, 200);
+                } else {
+                    currentlyPrimedNodeIndex = nodeIdx;
+                    state.hoveredNodeTarget = targetNode;
+                    
+                    document.getElementById('lbl-split-title-prompt').innerText = "⚠️ TAP SAME CHANNELS AGAIN TO MOVE";
+                    document.querySelectorAll('.choice-branch-btn').forEach(b => b.classList.remove('primed-intent'));
+                    btn.classList.add('primed-intent');
+                    btn.innerText = `CONFIRM DIRECTION PATH ${idx + 1} 🚀`;
+                }
+            };
+            optionsBox.appendChild(btn);
+        });
+    }
+
+    function evaluateGraphSpaceLandingPenaltyAndRewards() {
+        let p = state.players[state.activeTurnPointer];
+        let node = state.graphSpaces[p.boardPos];
+        let out = "";
+
+        if(node.type === "blue") { p.coins += 5; out = `${p.playerTag} landed on Blue (+5 Coins)`; }
+        else if(node.type === "red") { p.coins = Math.max(0, p.coins - 5); out = `${p.playerTag} landed on Red (-5 Coins)`; }
+        else if(node.type === "lucky") { p.coins += 15; out = `💥 LUCKY FIELD! ${p.playerTag} +15 Coins`; }
+        else if(node.type === "star") {
+            if(p.coins >= 10) { p.coins -= 10; p.stars += 1; out = `⭐ MODULE UNLOCKED! ${p.playerTag} got a Star!`; }
+            else { out = `${p.playerTag} didn't have 10 Coins for a Star...`; }
+        } else { out = `Safe Perimeter Node`; }
+
+        syncLeaderboardHUDMatrix();
+        spawnFrenzyAlertNotification(out, () => {
+            if(!p.isAI) { document.getElementById('btn-board-continue-step').style.display = "block"; }
+            else { setTimeout(completeActiveTurnExecution, 150); }
+        });
+    }
+
+    function completeActiveTurnExecution() {
+        state.activeTurnPointer++;
+        if(state.activeTurnPointer >= state.players.length) {
+            state.activeTurnPointer = 0; state.currentRound++;
+            if(state.currentRound > state.maxRounds) { executeGrandFinaleRankingsSummary(); } 
+            else { spawnFrenzyAlertNotification(`ROUND ${state.currentRound}`, launchActiveTurnCycleProcessor); }
+        } else { launchActiveTurnCycleProcessor(); }
+    }
+
+    function executeGrandFinaleRankingsSummary() {
+        let sorted = [...state.players].sort((a,b) => b.stars === a.stars ? b.coins - a.coins : b.stars - a.stars);
+        document.getElementById('lbl-grand-winner-announcement').innerText = `${sorted[0].playerTag} CONQUERED THE MULTIPLEX SYSTEM!`;
+        const container = document.getElementById('dom-finale-rankings-scrollbox'); container.innerHTML = "";
+        
+        sorted.forEach((p, idx) => {
+            let row = document.createElement('div'); row.style.padding = "6px"; row.style.borderBottom = "1px solid #333";
+            row.innerText = `#${idx+1} Player ${p.playerTag} | Stars: ${p.stars} | Coins: ${p.coins}`;
+            container.appendChild(row);
+        });
+        setActiveScreenContainer('scr-grand-finale');
+    }
+    
+    updateNavigationButtonStateUI();
+</script>
+</body>
+</html>

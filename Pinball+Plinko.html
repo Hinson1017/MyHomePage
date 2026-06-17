@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arcade Plinko - FRENZY ENGINE V3</title>
+    <style>
+        :root {
+            --bg-color: #020208;
+            --panel-color: #050512;
+            --accent-color: #00f2fe;
+            --p1-color: #ff2a6d;
+            --p2-color: #05d9e8;
+            --p3-color: #00ff66;
+            --p4-color: #ffea00;
+            --bonus-color: #ff00ff;
+            --text-color: #ffffff;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Courier New', Courier, monospace;
+            user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            background-image: radial-gradient(circle, #14072d 0%, #020208 100%);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        #game-container {
+            position: relative;
+            width: 880px;
+            height: 760px;
+            background: var(--panel-color);
+            border-radius: 20px;
+            display: flex;
+            overflow: hidden;
+            border: 3px solid #ff2a6d;
+        }
+
+        .shake {
+            animation: shakeAnim 0.12s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        @keyframes shakeAnim {
+            0%, 100% { transform: translate(0, 0); }
+            25% { transform: translate(-2px, 2px); }
+            50% { transform: translate(2px, -2px); }
+            75% { transform: translate(-1px, 1px); }
+        }
+
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(3, 3, 10, 0.96);
+            z-index: 10;
+        }
+
+        .screen.hidden {
+            display: none;
+        }
+
+        h1 {
+            font-size: 3.8rem;
+            margin-bottom: 1.5rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 6px;
+            color: #fff;
+            text-shadow: 0 0 15px var(--p1-color), 0 0 30px var(--bonus-color);
+            text-align: center;
+            line-height: 1.1;
+        }
+
+        .menu-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            width: 480px;
+        }
+
+        .menu-buttons .full-width {
+            grid-column: span 2;
+        }
+
+        .btn {
+            background: #000;
+            color: white;
+            border: 2px solid var(--accent-color);
+            padding: 12px 20px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.1s, transform 0.1s;
+            text-transform: uppercase;
+            display: inline-block;
+            text-align: center;
+            text-decoration: none;
+        }
+
+        .btn:hover {
+            color: #000;
+            background: var(--accent-color);
+            transform: scale(1.03);
+        }
+
+        .btn.p1-btn { border-color: var(--p1-color); }
+        .btn.p1-btn:hover { background: var(--p1-color); }
+        .btn.p2-btn { border-color: var(--p2-color); }
+        .btn.p2-btn:hover { background: var(--p2-color); }
+        .btn.p3-btn { border-color: var(--p3-color); }
+        .btn.p3-btn:hover { background: var(--p3-color); }
+        .btn.p4-btn { border-color: var(--p4-color); }
+        .btn.p4-btn:hover { background: var(--p4-color); }
+        .btn.web-btn { border-color: #ffffff; color: #ffffff; }
+        .btn.web-btn:hover { background: #ffffff; color: #000; }
+
+        #main-game {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+
+        #canvas-container {
+            position: relative;
+            width: 590px;
+            height: 760px;
+        }
+
+        canvas {
+            background: #010104;
+            display: block;
+        }
+
+        #sidebar {
+            width: 290px;
+            background: rgba(3, 3, 8, 0.98);
+            border-left: 3px solid #ff2a6d;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .ui-box {
+            background: #000;
+            border-radius: 4px;
+            padding: 12px;
+            margin-bottom: 12px;
+            border: 1px solid #ff2a6d;
+        }
+
+        .player-turn-indicator {
+            font-size: 1.5rem;
+            font-weight: 900;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin-bottom: 15px;
+            text-shadow: 0 0 8px currentColor;
+        }
+
+        .stats-label {
+            font-size: 0.75rem;
+            color: #8b8bbf;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        .stats-value {
+            font-size: 2.2rem;
+            font-weight: 900;
+            font-family: monospace;
+            line-height: 1.1;
+        }
+
+        .bonus-alert {
+            color: #ff00ff;
+            font-weight: bold;
+            text-align: center;
+            border: 2px dashed #ff00ff;
+        }
+
+        .controls-hint {
+            font-size: 0.75rem;
+            color: #4ef2d2;
+            text-align: center;
+            border-color: #00f2fe;
+        }
+
+        #winner-text {
+            font-size: 2.2rem;
+            margin-bottom: 30px;
+            font-weight: 900;
+            letter-spacing: 2px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        
+        <div id="menu-screen" class="screen">
+            <h1>NEON FRENZY<br><span style="color: #ff00ff;">PLINKO</span></h1>
+            <div class="menu-buttons">
+                <button class="btn p1-btn" onclick="showComOptions()">1 PLAYER</button>
+                <button class="btn p2-btn" onclick="startGame(2, 0)">2 PLAYERS</button>
+                <button class="btn p3-btn" onclick="startGame(3, 0)">3 PLAYERS</button>
+                <button class="btn p4-btn" onclick="startGame(4, 0)">4 PLAYERS</button>
+                <a href="https://example.com" target="_blank" class="btn web-btn full-width">VISIT WEBSITE</a>
+            </div>
+        </div>
+
+        <div id="com-screen" class="screen hidden">
+            <h1>CHOOSE OPPONENTS</h1>
+            <div class="menu-buttons">
+                <button class="btn p1-btn" onclick="startGame(1, 0)">NO COMS (SOLO)</button>
+                <button class="btn p2-btn" onclick="startGame(1, 1)">PLAY WITH 1 COM</button>
+                <button class="btn p4-btn" onclick="startGame(1, 3)">PLAY WITH 3 COMS</button>
+                <button class="btn full-width" style="border-color:#fff;" onclick="hideComOptions()">BACK</button>
+            </div>
+        </div>
+
+        <div id="game-over-screen" class="screen hidden">
+            <h1 style="font-size: 4rem;">MATCH OVER</h1>
+            <div id="winner-text">Player 1 Dominates!</div>
+            <button class="btn" style="border-color: #fff;" onclick="resetToMenu()">REPLAY</button>
+        </div>
+
+        <div id="main-game">
+            <div id="canvas-container">
+                <canvas id="gameCanvas" width="590" height="760"></canvas>
+            </div>
+            
+            <div id="sidebar">
+                <div>
+                    <div id="turn-indicator" class="player-turn-indicator" style="color: var(--p1-color);">P1 TURN</div>
+                    
+                    <div id="p1-panel" class="ui-box">
+                        <div id="p1-label" class="stats-label">// PLAYER 1</div>
+                        <div id="p1-score" class="stats-value" style="color: var(--p1-color)">000</div>
+                        <div class="stats-label" style="margin-top: 4px;">CHIPS: <span id="p1-balls" style="color: #fff">5</span></div>
+                    </div>
+
+                    <div id="p2-panel" class="ui-box" style="display: none;">
+                        <div id="p2-label" class="stats-label">// PLAYER 2</div>
+                        <div id="p2-score" class="stats-value" style="color: var(--p2-color)">000</div>
+                        <div class="stats-label" style="margin-top: 4px;">CHIPS: <span id="p2-balls" style="color: #fff">5</span></div>
+                    </div>
+
+                    <div id="p3-panel" class="ui-box" style="display: none;">
+                        <div id="p3-label" class="stats-label">// PLAYER 3</div>
+                        <div id="p3-score" class="stats-value" style="color: var(--p3-color)">000</div>
+                        <div class="stats-label" style="margin-top: 4px;">CHIPS: <span id="p3-balls" style="color: #fff">5</span></div>
+                    </div>
+
+                    <div id="p4-panel" class="ui-box" style="display: none;">
+                        <div id="p4-label" class="stats-label">// PLAYER 4</div>
+                        <div id="p4-score" class="stats-value" style="color: var(--p4-color)">000</div>
+                        <div class="stats-label" style="margin-top: 4px;">CHIPS: <span id="p4-balls" style="color: #fff">5</span></div>
+                    </div>
+
+                    <div class="ui-box bonus-alert">
+                        MID-STAGE SLIDER<br>
+                        <span style="font-size: 0.72rem; font-weight: normal; color: #fff;">PASS THROUGH THE TOP OF THE MOVING BOX TO SCORE AND KEEP DROPPING!</span>
+                    </div>
+                </div>
+
+                <div class="ui-box controls-hint" id="hints-display">
+                    READY ENGINE...<br>
+                    CLICK FIELD TO EJECT CHIP
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const container = document.getElementById('game-container');
+
+        // Physics constants
+        const GRAVITY = 0.40; 
+        const FRICTION = 0.992; 
+        const BOUNCE = 0.42; 
+        const FRENZY_MAX_BOOST = 1.12; 
+        const BALL_RADIUS = 8; 
+        const PEG_RADIUS = 3.5;
+        const TOTAL_BALLS = 5;
+
+        let totalActivePlayers = 1; 
+        let activePlayer = 1; 
+        let playersData = {
+            1: { score: 0, ballsLeft: TOTAL_BALLS, color: '#ff2a6d', isCom: false, name: "PLAYER 1" },
+            2: { score: 0, ballsLeft: TOTAL_BALLS, color: '#05d9e8', isCom: false, name: "PLAYER 2" },
+            3: { score: 0, ballsLeft: TOTAL_BALLS, color: '#00ff66', isCom: false, name: "PLAYER 3" },
+            4: { score: 0, ballsLeft: TOTAL_BALLS, color: '#ffea00', isCom: false, name: "PLAYER 4" }
+        };
+
+        let pegs = [];
+        let balls = [];
+        let buckets = [];
+        let dividers = []; 
+        let particles = [];
+        let mouseX = canvas.width / 2;
+        let isBallInPlay = false;
+        let comTimer = 0; 
+
+        const leftWallX = 70;
+        const rightWallX = canvas.width - 70;
+        const wallHeight = 110;
+
+        // Bottom Overdrive Laser beam parameters
+        let bonusBox = {
+            x: 0,
+            y: 655, 
+            width: 100, 
+            height: 45, 
+            speed: 4.8, 
+            direction: 1,
+            hitFlash: 0
+        };
+
+        // Mid-Stage Pass-Through Sweeper Box Setup
+        let midBox = {
+            x: 150,
+            y: 350,          
+            cellWidth: 45,   
+            height: 40,      
+            speed: 2.2,      
+            direction: 1,
+            get width() { return this.cellWidth * 3; }
+        };
+
+        const potentialValues = [10, 25, 40, 60, 80, 95, 110, 130];
+        const bucketColors = [
+            '#ff0055', '#ff5500', '#ffcc00', '#33ff00', '#00ffcc', '#0099ff', '#7700ff', 
+            '#ff00ff', '#ff0055', '#00ffcc', '#ffcc00', '#ff5500', '#7700ff', '#33ff00'
+        ];
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.vx = (Math.random() - 0.5) * 6;
+                this.vy = (Math.random() - 0.5) * 6;
+                this.radius = Math.random() * 2 + 1.2;
+                this.alpha = 1;
+                this.decay = Math.random() * 0.07 + 0.06;
+                this.color = color;
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.alpha -= this.decay;
+            }
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        class Peg {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.pulse = 0;
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, PEG_RADIUS, 0, Math.PI * 2);
+                if (this.pulse > 0) {
+                    ctx.fillStyle = '#ffffff';
+                    this.pulse--;
+                } else {
+                    ctx.fillStyle = '#2d2d69';
+                }
+                ctx.fill();
+            }
+        }
+
+        class Ball {
+            constructor(x, y, player) {
+                this.x = x;
+                this.y = y;
+                this.vx = (Math.random() - 0.5) * 3; 
+                this.vy = 2;
+                this.player = player;
+                this.color = playersData[player].color;
+                this.history = []; 
+                this.maxHistory = 6; 
+                this.cooldowns = { midBox: 0 }; 
+            }
+
+            update() {
+                this.history.push({ x: this.x, y: this.y });
+                if (this.history.length > this.maxHistory) {
+                    this.history.shift();
+                }
+
+                this.cooldowns.midBox = Math.max(0, this.cooldowns.midBox - 1);
+
+                this.vy += GRAVITY;
+                this.vx *= FRICTION;
+                this.x += this.vx;
+                this.y += this.vy;
+
+                // Border Constraints
+                if (this.x - BALL_RADIUS < 10) {
+                    this.x = BALL_RADIUS + 10;
+                    this.vx = Math.abs(this.vx) * BOUNCE * FRENZY_MAX_BOOST;
+                } else if (this.x + BALL_RADIUS > canvas.width - 10) {
+                    this.x = canvas.width - BALL_RADIUS - 10;
+                    this.vx = -Math.abs(this.vx) * BOUNCE * FRENZY_MAX_BOOST;
+                }
+
+                // Funnel Walls
+                if (this.y < wallHeight) {
+                    if (this.x - BALL_RADIUS < leftWallX) {
+                        this.x = leftWallX + BALL_RADIUS;
+                        this.vx = Math.abs(this.vx) * BOUNCE;
+                    } else if (this.x + BALL_RADIUS > rightWallX) {
+                        this.x = rightWallX - BALL_RADIUS;
+                        this.vx = -Math.abs(this.vx) * BOUNCE;
+                    }
+                }
+
+                // ADVANCED MID-STAGE PASS-THROUGH LOGIC WITH INTERNAL WALLS
+                let mbLeft = midBox.x;
+                let mbRight = midBox.x + midBox.width;
+                let mbTop = midBox.y;
+                let mbBottom = midBox.y + midBox.height;
+
+                if (this.y + BALL_RADIUS > mbTop && this.y - BALL_RADIUS < mbBottom &&
+                    this.x + BALL_RADIUS > mbLeft && this.x - BALL_RADIUS < mbRight) {
+                    
+                    let previousY = this.history.length > 1 ? this.history[this.history.length - 2].y : this.y;
+                    
+                    // Dropping clean through the top edge
+                    if (previousY <= mbTop + 6 && this.vy > 0) {
+                        if (this.cooldowns.midBox === 0) {
+                            let relativeX = this.x - mbLeft;
+                            let chamberIndex = Math.floor(relativeX / midBox.cellWidth);
+                            let points = 0;
+                            let fColor = '#fff';
+
+                            if (chamberIndex === 0 || chamberIndex === 2) {
+                                points = 50;
+                                fColor = 'var(--p4-color)'; 
+                            } else if (chamberIndex === 1) {
+                                points = 100;
+                                fColor = 'var(--p1-color)'; 
+                            }
+
+                            if (points > 0) {
+                                playersData[this.player].score += points;
+                                triggerSparks(this.x, this.y, fColor, 14);
+                                triggerScreenShake();
+                                this.cooldowns.midBox = 25; 
+                            }
+                        }
+                    } else {
+                        // CHECK COLLISION AGAINST INTERNAL CHAMBER WALLS & SIDE PANELS
+                        let wall1X = mbLeft + midBox.cellWidth;  // Wall between first 50 and 100
+                        let wall2X = mbLeft + midBox.cellWidth * 2;  // Wall between 100 and second 50
+
+                        if (Math.abs(this.x - wall1X) < BALL_RADIUS + 2) {
+                            // Bounce off internal Divider 1
+                            if (this.x < wall1X) {
+                                this.x = wall1X - BALL_RADIUS - 2;
+                                this.vx = -Math.abs(this.vx) * BOUNCE * FRENZY_MAX_BOOST;
+                            } else {
+                                this.x = wall1X + BALL_RADIUS + 2;
+                                this.vx = Math.abs(this.vx) * BOUNCE * FRENZY_MAX_BOOST;
+                            }
+                            triggerSparks(this.x, this.y, '#ffffff', 3);
+                        } else if (Math.abs(this.x - wall2X) < BALL_RADIUS + 2) {
+                            // Bounce off internal Divider 2
+                            if (this.x < wall2X) {
+                                this.x = wall2X - BALL_RADIUS - 2;
+                                this.vx = -Math.abs(this.vx) * BOUNCE * FRENZY_MAX_BOOST;
+                            } else {
+                                this.x = wall2X + BALL_RADIUS + 2;
+                                this.vx = Math.abs(this.vx) * BOUNCE * FRENZY_MAX_BOOST;
+                            }
+                            triggerSparks(this.x, this.y, '#ffffff', 3);
+                        } else if (this.x < mbLeft + 12) {
+                            // Left boundary panel
+                            this.x = mbLeft - BALL_RADIUS - 2;
+                            this.vx = -Math.abs(this.vx) * BOUNCE * FRENZY_MAX_BOOST;
+                            triggerSparks(this.x, this.y, '#ffffff', 2);
+                        } else if (this.x > mbRight - 12) {
+                            // Right boundary panel
+                            this.x = mbRight + BALL_RADIUS + 2;
+                            this.vx = Math.abs(this.vx) * BOUNCE * FRENZY_MAX_BOOST;
+                            triggerSparks(this.x, this.y, '#ffffff', 2);
+                        }
+                    }
+                }
+
+                // Partition Bottom Wall Intersections
+                dividers.forEach(div => {
+                    if (this.y + BALL_RADIUS > div.y) {
+                        if (Math.abs(this.x - div.x) < BALL_RADIUS + 2) {
+                            if (this.x < div.x) {
+                                this.x = div.x - BALL_RADIUS - 2;
+                                this.vx = -Math.abs(this.vx) * BOUNCE * FRENZY_MAX_BOOST;
+                            } else {
+                                this.x = div.x + BALL_RADIUS + 2;
+                                this.vx = Math.abs(this.vx) * BOUNCE * FRENZY_MAX_BOOST;
+                            }
+                            div.flash = 4; 
+                            triggerSparks(div.x, this.y, '#ffffff', 2);
+                        }
+                    }
+                });
+
+                // Peg Matrix Map Impact Routine
+                pegs.forEach(peg => {
+                    let dx = this.x - peg.x;
+                    let dy = this.y - peg.y;
+                    let dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < BALL_RADIUS + PEG_RADIUS) {
+                        let overlap = (BALL_RADIUS + PEG_RADIUS) - dist;
+                        let nx = dx / dist;
+                        let ny = dy / dist;
+                        
+                        this.x += nx * overlap;
+                        this.y += ny * overlap;
+
+                        let dot = this.vx * nx + this.vy * ny;
+                        
+                        this.vx = (this.vx - 2 * dot * nx) * BOUNCE * FRENZY_MAX_BOOST;
+                        this.vy = (this.vy - 2 * dot * ny) * BOUNCE * FRENZY_MAX_BOOST;
+
+                        if (this.vy < -5) this.vy = -5;
+                        if (Math.abs(this.vx) < 0.4) this.vx += (Math.random() - 0.5) * 2;
+                        
+                        peg.pulse = 4;
+                        triggerSparks(peg.x, peg.y, this.color, 1);
+                    }
+                });
+
+                // Check for scoring condition at screen bottom
+                if (this.y + BALL_RADIUS >= canvas.height) {
+                    handleBallScored(this);
+                }
+            }
+
+            draw() {
+                ctx.save();
+                for (let i = 0; i < this.history.length; i++) {
+                    let pos = this.history[i];
+                    let alpha = (i + 1) / this.history.length * 0.35;
+                    ctx.fillStyle = this.color;
+                    ctx.globalAlpha = alpha;
+                    ctx.beginPath();
+                    ctx.arc(pos.x, pos.y, BALL_RADIUS * 0.85, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                ctx.globalAlpha = 1.0;
+                ctx.fillStyle = '#ffffff';
+                ctx.strokeStyle = this.color;
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, BALL_RADIUS, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+        function showComOptions() {
+            document.getElementById('menu-screen').className = 'screen hidden';
+            document.getElementById('com-screen').className = 'screen';
+        }
+
+        function hideComOptions() {
+            document.getElementById('com-screen').className = 'screen hidden';
+            document.getElementById('menu-screen').className = 'screen';
+        }
+
+        function triggerSparks(x, y, color, amount) {
+            if (particles.length > 40) return; 
+            for (let i = 0; i < amount; i++) {
+                particles.push(new Particle(x, y, color));
+            }
+        }
+
+        function triggerScreenShake() {
+            container.classList.add('shake');
+            setTimeout(() => { container.classList.remove('shake'); }, 120);
+        }
+
+        function initPegs() {
+            pegs = [];
+            const rows = 12; 
+            const cols = 19; 
+            const startY = 150;
+            const startX = 20; 
+            const rowSpacing = 42;
+            const colSpacing = (canvas.width - 40) / (cols - 1);
+
+            for (let r = 0; r < rows; r++) {
+                let horizontalShift = (r % 2 === 0) ? 0 : colSpacing / 2;
+                for (let c = 0; c < cols; c++) {
+                    let finalX = startX + (c * colSpacing) + horizontalShift;
+                    if (finalX > 15 && finalX < canvas.width - 15) {
+                        let tempPeg = new Peg(finalX, startY + (r * rowSpacing));
+                        if (tempPeg.y < midBox.y - 10 || tempPeg.y > midBox.y + midBox.height + 15) {
+                            pegs.push(tempPeg);
+                        }
+                    }
+                }
+            }
+        }
+
+        function initBuckets() {
+            buckets = [];
+            dividers = [];
+            const count = 14; 
+            const width = canvas.width / count;
+            
+            for (let i = 0; i < count; i++) {
+                let baseVal = potentialValues[Math.floor(Math.random() * potentialValues.length)];
+                buckets.push({
+                    x: i * width,
+                    y: canvas.height - 60,
+                    width: width,
+                    height: 60,
+                    baseValue: baseVal, 
+                    currentValue: baseVal, 
+                    color: bucketColors[i % bucketColors.length]
+                });
+
+                if (i > 0) {
+                    dividers.push({
+                        x: i * width,
+                        y: canvas.height - 105, 
+                        flash: 0
+                    });
+                }
+            }
+        }
+
+        function startGame(humanPlayers, comOpponents) {
+            totalActivePlayers = humanPlayers + comOpponents;
+            
+            for (let i = 1; i <= 4; i++) {
+                playersData[i].score = 0;
+                playersData[i].ballsLeft = TOTAL_BALLS;
+                
+                if (i <= humanPlayers) {
+                    playersData[i].isCom = false;
+                    playersData[i].name = `PLAYER ${i}`;
+                } else if (i <= totalActivePlayers) {
+                    playersData[i].isCom = true;
+                    playersData[i].name = `COM ${i - humanPlayers}`;
+                }
+
+                document.getElementById(`p${i}-label`).innerText = `// ${playersData[i].name}`;
+                document.getElementById(`p${i}-panel`).style.display = (i <= totalActivePlayers) ? 'block' : 'none';
+            }
+            
+            activePlayer = 1;
+            isBallInPlay = false;
+            balls = [];
+            particles = [];
+            bonusBox.x = 0;
+            midBox.x = 150;
+            comTimer = 0;
+
+            document.getElementById('menu-screen').className = 'screen hidden';
+            document.getElementById('com-screen').className = 'screen hidden';
+            document.getElementById('game-over-screen').className = 'screen hidden';
+            
+            initBuckets(); 
+            initPegs();
+            updateUI();
+        }
+
+        function updateUI() {
+            for (let i = 1; i <= totalActivePlayers; i++) {
+                let scoreStr = String(playersData[i].score).padStart(3, '0');
+                document.getElementById(`p${i}-score`).innerText = scoreStr;
+                document.getElementById(`p${i}-balls`).innerText = playersData[i].ballsLeft;
+            }
+
+            const turnIndicator = document.getElementById('turn-indicator');
+            turnIndicator.innerText = `${playersData[activePlayer].name} TURN`;
+            turnIndicator.style.color = playersData[activePlayer].color;
+
+            const hintBox = document.getElementById('hints-display');
+            if (playersData[activePlayer].isCom) {
+                hintBox.innerHTML = "COM CALCULATING...<br>STAND BY FOR DROPAWAY";
+                hintBox.style.borderColor = "#ff2a6d";
+            } else {
+                hintBox.innerHTML = "READY ENGINE...<br>CLICK FIELD TO EJECT CHIP";
+                hintBox.style.borderColor = "#00f2fe";
+            }
+        }
+
+        function updateMovingElements() {
+            bonusBox.x += bonusBox.speed * bonusBox.direction;
+            if (bonusBox.x <= 0) {
+                bonusBox.x = 0;
+                bonusBox.direction = 1;
+            } else if (bonusBox.x + bonusBox.width >= canvas.width) {
+                bonusBox.x = canvas.width - bonusBox.width;
+                bonusBox.direction = -1;
+            }
+
+            buckets.forEach(bucket => {
+                if (bucket.x + bucket.width >= bonusBox.x && bucket.x <= bonusBox.x + bonusBox.width) {
+                    bucket.currentValue = 150; 
+                } else {
+                    bucket.currentValue = bucket.baseValue; 
+                }
+            });
+
+            midBox.x += midBox.speed * midBox.direction;
+            if (midBox.x <= 15) {
+                midBox.x = 15;
+                midBox.direction = 1;
+            } else if (midBox.x + midBox.width >= canvas.width - 15) {
+                midBox.x = canvas.width - midBox.width - 15;
+                midBox.direction = -1;
+            }
+        }
+
+        function dropBallAt(xPosition) {
+            playersData[activePlayer].ballsLeft--;
+            balls.push(new Ball(xPosition, 35, activePlayer));
+            isBallInPlay = true;
+            updateUI();
+            triggerSparks(xPosition, 35, playersData[activePlayer].color, 6);
+        }
+
+        canvas.addEventListener('click', (e) => {
+            if (isBallInPlay || playersData[activePlayer].isCom) return;
+
+            if (mouseX > leftWallX + BALL_RADIUS && mouseX < rightWallX - BALL_RADIUS) {
+                if (playersData[activePlayer].ballsLeft > 0) {
+                    dropBallAt(mouseX);
+                }
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            let rawX = e.clientX - rect.left;
+            mouseX = Math.max(leftWallX + BALL_RADIUS + 2, Math.min(rightWallX - BALL_RADIUS - 2, rawX));
+        });
+
+        function getNextPlayer(current) {
+            let check = current;
+            for (let i = 0; i < totalActivePlayers; i++) {
+                check = (check % totalActivePlayers) + 1;
+                if (playersData[check].ballsLeft > 0) return check;
+            }
+            return null;
+        }
+
+        function handleBallScored(ball) {
+            const scoreBucket = buckets.find(b => ball.x >= b.x && ball.x <= b.x + b.width);
+            if (scoreBucket) {
+                let pointsAdded = scoreBucket.currentValue;
+                if (pointsAdded === 150) bonusBox.hitFlash = 12; 
+                playersData[ball.player].score += pointsAdded;
+                triggerSparks(ball.x, canvas.height - 35, pointsAdded === 150 ? '#ffffff' : scoreBucket.color, 12);
+                triggerScreenShake();
+            }
+
+            // Remove the ball from play
+            balls = [];
+            isBallInPlay = false;
+            comTimer = 0; 
+
+            let next = getNextPlayer(activePlayer);
+            if (next !== null) activePlayer = next;
+            else {
+                endGame();
+                return;
+            }
+            updateUI();
+        }
+
+        function endGame() {
+            const overScreen = document.getElementById('game-over-screen');
+            const winText = document.getElementById('winner-text');
+            overScreen.className = 'screen';
+
+            let highestScore = -1;
+            let winner = 1;
+            let tie = false;
+
+            for (let i = 1; i <= totalActivePlayers; i++) {
+                if (playersData[i].score > highestScore) {
+                    highestScore = playersData[i].score;
+                    winner = i;
+                    tie = false;
+                } else if (playersData[i].score === highestScore) {
+                    tie = true;
+                }
+            }
+
+            if (tie) {
+                winText.innerText = "STALEMATE TIE DRAW!";
+                winText.style.color = '#ffffff';
+            } else {
+                winText.innerText = `${playersData[winner].name} WINS!`;
+                winText.style.color = playersData[winner].color;
+            }
+        }
+
+        function resetToMenu() {
+            document.getElementById('game-over-screen').className = 'screen hidden';
+            document.getElementById('menu-screen').className = 'screen';
+        }
+
+        function drawMidBox() {
+            ctx.save();
+            let mx = midBox.x;
+            let my = midBox.y;
+            let cw = midBox.cellWidth;
+            let h = midBox.height;
+
+            ctx.font = '900 14px monospace';
+            ctx.textAlign = 'center';
+
+            // Chamber 1: 50 (Yellow)
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = 'var(--p4-color)';
+            ctx.fillStyle = 'rgba(255, 234, 0, 0.08)';
+            ctx.fillRect(mx, my, cw, h);
+            ctx.strokeRect(mx, my, cw, h);
+            ctx.fillStyle = 'var(--p4-color)';
+            ctx.fillText('50', mx + cw / 2, my + 25);
+
+            // Chamber 2: 100 (Red)
+            ctx.strokeStyle = 'var(--p1-color)';
+            ctx.fillStyle = 'rgba(255, 42, 109, 0.08)';
+            ctx.fillRect(mx + cw, my, cw, h);
+            ctx.strokeRect(mx + cw, my, cw, h);
+            ctx.fillStyle = 'var(--p1-color)';
+            ctx.fillText('100', mx + cw + cw / 2, my + 25);
+
+            // Chamber 3: 50 (Yellow)
+            ctx.strokeStyle = 'var(--p4-color)';
+            ctx.fillStyle = 'rgba(255, 234, 0, 0.08)';
+            ctx.fillRect(mx + (cw * 2), my, cw, h);
+            ctx.strokeRect(mx + (cw * 2), my, cw, h);
+            ctx.fillStyle = 'var(--p4-color)';
+            ctx.fillText('50', mx + (cw * 2) + cw / 2, my + 25);
+
+            // DRAW INTERNAL PHYSICAL INNER WALL FILAMENTS
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#ffffff';
+            ctx.beginPath();
+            // Inner Wall 1 (between first 50 and 100)
+            ctx.moveTo(mx + cw, my + 4);
+            ctx.lineTo(mx + cw, my + h);
+            // Inner Wall 2 (between 100 and second 50)
+            ctx.moveTo(mx + cw * 2, my + 4);
+            ctx.lineTo(mx + cw * 2, my + h);
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        function drawBottomElements() {
+            // Overdrive Laser Slider Beam
+            ctx.save();
+            if (bonusBox.hitFlash > 0) {
+                ctx.fillStyle = '#ffffff';
+                bonusBox.hitFlash--;
+            } else {
+                ctx.fillStyle = 'rgba(255, 0, 255, 0.25)';
+            }
+            ctx.fillRect(bonusBox.x, bonusBox.y, bonusBox.width, bonusBox.height);
+            ctx.strokeStyle = 'var(--bonus-color)';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(bonusBox.x, bonusBox.y, bonusBox.width, bonusBox.height);
+            ctx.restore();
+
+            // Buckets Floor Grid
+            buckets.forEach(bucket => {
+                ctx.save();
+                ctx.fillStyle = 'rgba(0,0,0,0.4)';
+                ctx.fillRect(bucket.x, bucket.y, bucket.width, bucket.height);
+                
+                ctx.lineWidth = 2;
+                if (bucket.currentValue === 150) {
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = '#ffffff';
+                } else {
+                    ctx.strokeStyle = bucket.color;
+                }
+                ctx.strokeRect(bucket.x, bucket.y, bucket.width, bucket.height);
+
+                ctx.fillStyle = (bucket.currentValue === 150) ? '#ffffff' : bucket.color;
+                ctx.font = 'bold 13px monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText(bucket.currentValue, bucket.x + bucket.width / 2, bucket.y + 35);
+                ctx.restore();
+            });
+
+            // Base Grid Channel Pins
+            dividers.forEach(div => {
+                ctx.save();
+                if (div.flash > 0) {
+                    ctx.strokeStyle = '#ffffff';
+                    div.flash--;
+                } else {
+                    ctx.strokeStyle = '#2d2d69';
+                }
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(div.x, div.y);
+                ctx.lineTo(div.x, canvas.height - 60);
+                ctx.stroke();
+                ctx.restore();
+            });
+        }
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Top Ejection Target Guidelines
+            if (!isBallInPlay && !playersData[activePlayer].isCom) {
+                ctx.save();
+                ctx.strokeStyle = 'rgba(0, 242, 254, 0.15)';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([4, 6]);
+                ctx.beginPath();
+                ctx.moveTo(mouseX, 35);
+                ctx.lineTo(mouseX, canvas.height);
+                ctx.stroke();
+                
+                ctx.fillStyle = playersData[activePlayer].color;
+                ctx.beginPath();
+                ctx.arc(mouseX, 35, BALL_RADIUS, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            // Core Engine Logic Execution Step
+            updateMovingElements();
+
+            // Simple Automated CPU Engine Ejection Brain
+            if (playersData[activePlayer].isCom && !isBallInPlay) {
+                comTimer++;
+                if (comTimer > 45) { 
+                    let randomRangeX = Math.random() * (rightWallX - leftWallX - BALL_RADIUS * 2) + leftWallX + BALL_RADIUS;
+                    dropBallAt(randomRangeX);
+                }
+            }
+
+            // Simulation Entity Array Processing updates
+            pegs.forEach(peg => peg.draw());
+            
+            drawMidBox();
+            drawBottomElements();
+
+            // Physics Entity Update Processing Loop
+            balls.forEach(ball => {
+                ball.update();
+                ball.draw();
+            });
+
+            particles.forEach((part, index) => {
+                part.update();
+                part.draw();
+                if (part.alpha <= 0) particles.splice(index, 1);
+            });
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Run game loop initialization
+        initBuckets();
+        initPegs();
+        requestAnimationFrame(gameLoop);
+    </script>
+</body>
+</html>

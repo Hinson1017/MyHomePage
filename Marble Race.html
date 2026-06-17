@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Algorace: Epic Mega-Course Arena</title>
+    <style>
+        :root {
+            --bg-color: #08080a;
+            --panel-color: #121216;
+            --panel-item: #1c1c24;
+            --accent-color: #ff4757;
+            --text-color: #f5f5f7;
+            --success-color: #2ed573;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        #sidebar {
+            width: 420px;
+            background-color: var(--panel-color);
+            padding: 18px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            border-right: 1px solid #232329;
+            overflow-y: auto;
+            z-index: 10;
+            box-shadow: 10px 0 30px rgba(0,0,0,0.6);
+        }
+
+        #canvas-container {
+            flex-grow: 1;
+            position: relative;
+            background: #040406;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        h2, h3 { margin: 0; font-weight: 700; }
+        h2 { color: #fff; font-size: 1.3rem; display: flex; justify-content: space-between; align-items: center; }
+        h3 { color: #a4b0be; font-size: 0.95rem; border-bottom: 1px solid #232329; padding-bottom: 4px; margin-top: 4px;}
+
+        .control-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #747d8c;
+            font-weight: bold;
+            display: block;
+            margin-bottom: 3px;
+        }
+
+        select, input {
+            width: 100%;
+            padding: 8px 10px;
+            background: var(--panel-item);
+            border: 1px solid #2d2d37;
+            color: #fff;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            outline: none;
+            box-sizing: border-box;
+        }
+
+        .btn-group {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 4px;
+        }
+
+        .cam-btn {
+            padding: 6px 2px;
+            font-size: 0.75rem;
+            background: var(--panel-item);
+            border: 1px solid #2d2d37;
+            color: #a4b0be;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .cam-btn.active {
+            background: #00d2d3;
+            color: #000;
+            border-color: #00d2d3;
+        }
+
+        button.action-btn {
+            width: 100%;
+            padding: 12px;
+            background: var(--accent-color);
+            color: #fff;
+            font-weight: 700;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            letter-spacing: 0.5px;
+        }
+        button.action-btn:disabled {
+            background: #3a3a42;
+            color: #747d8c;
+            cursor: not-allowed;
+        }
+
+        .players-container {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            max-height: 280px;
+            overflow-y: auto;
+            background: rgba(0,0,0,0.2);
+            padding: 4px;
+            border-radius: 6px;
+        }
+
+        .player-row {
+            background: var(--panel-item);
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #252530;
+        }
+
+        .player-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+
+        .player-name { font-weight: bold; color: #fff; font-size: 0.8rem; }
+        .player-bank { color: var(--success-color); font-weight: bold; font-size: 0.8rem; }
+
+        .player-inputs {
+            display: grid;
+            grid-template-columns: 1.3fr 0.7fr;
+            gap: 4px;
+        }
+
+        #leaderboard-box {
+            max-height: 200px;
+            overflow-y: auto;
+            background: rgba(0,0,0,0.2);
+            border-radius: 6px;
+            padding: 4px;
+        }
+
+        #leaderboard {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        #leaderboard li {
+            padding: 6px 8px;
+            background: var(--panel-item);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            font-size: 0.8rem;
+        }
+
+        .color-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        #hud {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(10, 10, 12, 0.85);
+            padding: 10px 14px;
+            border-radius: 8px;
+            pointer-events: none;
+            border: 1px solid rgba(255,255,255,0.08);
+            font-family: monospace;
+            z-index: 5;
+        }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #2d2d37; border-radius: 3px; }
+    </style>
+</head>
+<body>
+
+    <div id="sidebar">
+        <h2>🔮 Grand Prix Arena <span id="tourney-round" style="font-size:0.8rem; background: #2ed573; color: #000; padding: 2px 6px; border-radius: 4px; display:none;">R1/3</span></h2>
+        
+        <div>
+            <span class="control-label">Betted Players (1 - 8)</span>
+            <select id="player-count" onchange="setupPlayerPanels()">
+                <option value="1">1 Player</option>
+                <option value="2">2 Players</option>
+                <option value="3">3 Players</option>
+                <option value="4" selected>4 Players</option>
+                <option value="5">5 Players</option>
+                <option value="6">6 Players</option>
+                <option value="7">7 Players</option>
+                <option value="8">8 Players</option>
+            </select>
+        </div>
+
+        <div>
+            <span class="control-label">Game Rules Mode</span>
+            <select id="game-mode" onchange="handleModeChange()">
+                <option value="first">Be the First Place (Standard)</option>
+                <option value="last">Be the Last Place (Anti-Speed)</option>
+                <option value="clock">Beat the Clock (Win if under 35s)</option>
+                <option value="tournament">Tournament (Cumulative 3-Stage Series)</option>
+            </select>
+        </div>
+
+        <div>
+            <span class="control-label">Staked Entries</span>
+            <div class="players-container" id="players-box"></div>
+        </div>
+
+        <div>
+            <span class="control-label">Viewport Camera</span>
+            <div class="btn-group">
+                <button class="cam-btn active" id="cam-lead" onclick="setCamera('lead')">LEADER</button>
+                <button class="cam-btn" id="cam-last" onclick="setCamera('last')">LAST</button>
+                <button class="cam-btn" id="cam-wasd" onclick="setCamera('wasd')">WASD</button>
+            </div>
+        </div>
+
+        <button class="action-btn" id="start-btn" onclick="startRaceSimulation()">LAUNCH GRAND PRIX</button>
+
+        <h3>Rankings (30 Marbles)</h3>
+        <div id="leaderboard-box">
+            <ul id="leaderboard"></ul>
+        </div>
+    </div>
+
+    <div id="canvas-container">
+        <canvas id="simCanvas"></canvas>
+        <div id="hud">
+            <div id="hud-mode" style="font-weight: bold; color: #00d2d3; font-size: 1rem;">Mode: FIRST PLACE</div>
+            <div id="hud-timer" style="font-size: 0.85rem; color: #fff; margin-top: 1px;">Time: 0.00s</div>
+            <div id="hud-cam" style="color: #ffa502; font-size: 0.75rem; margin-top: 3px;">Cam: Tracking Leader</div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+    <script>
+        const { Engine, Runner, Bodies, Composite, Body, Events } = Matter;
+        
+        let engine, runner, canvas, ctx;
+        let marbles = [];
+        let courseElements = [];
+        let finishedMarbles = [];
+        let raceActive = false;
+        let startTime = 0;
+        let elapsedTime = 0;
+        
+        const trackWidth = 1400; // Expanded width to fit huge finish line basin safely
+        let cameraMode = 'lead'; 
+        let cameraX = trackWidth / 2;
+        let cameraY = 200;
+        let keys = {};
+
+        let tournamentActive = false;
+        let tournamentRound = 1;
+        let tournamentScores = {}; 
+
+        // 30 STRICTLY DISTINCT COLOR HEX CODES & MATCHING DESCRIPTIVE NAMES
+        const marbleColors = [
+            "#ff4757", "#2ed573", "#1e90ff", "#ffa502", "#9b59b6", 
+            "#1abc9c", "#fd79a8", "#ffffff", "#747d8c", "#f1c40f", 
+            "#e67e22", "#6c5ce7", "#32ff7e", "#7efff5", "#fffa65", 
+            "#ffb8b8", "#ff9f43", "#0abde3", "#10ac84", "#5f27cd", 
+            "#00d2d3", "#ff6b6b", "#48dbfb", "#1dd1a1", "#feca57", 
+            "#54a0ff", "#dff9fb", "#be2edd", "#4cd137", "#e84118"
+        ];
+        
+        const marbleNames = [
+            "Crimson", "Lime", "Cobalt", "Orange", "Purple", 
+            "Turquoise", "Hot Pink", "White", "Slate Gray", "Canary Yellow", 
+            "Pumpkin", "Deep Violet", "Neon Green", "Electric Cyan", "Laser Yellow", 
+            "Light Pink", "Mandarin", "Sky Blue", "Forest Green", "Royal Purple", 
+            "Teal Blue", "Watermelon", "Ice Blue", "Mint Green", "Sun Gold", 
+            "Soft Blue", "Pearl White", "Magenta", "Bright Green", "Scarlet Red"
+        ];
+
+        let players = Array.from({length: 8}, (_, i) => ({ id: i + 1, name: `Player ${i + 1}`, bank: 1000 }));
+
+        window.addEventListener('DOMContentLoaded', () => {
+            canvas = document.getElementById('simCanvas');
+            ctx = canvas.getContext('2d');
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+
+            window.addEventListener('keydown', e => { 
+                const k = e.key.toLowerCase(); keys[k] = true; 
+                if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(k) && cameraMode !== 'wasd') setCamera('wasd');
+            });
+            window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+
+            setupPlayerPanels();
+            initPhysicsEngine();
+            generateFlowCourse('first');
+        });
+
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+        }
+
+        function handleModeChange() {
+            const mode = document.getElementById('game-mode').value;
+            if (mode === 'tournament') {
+                document.getElementById('tourney-round').style.display = 'inline-block';
+                document.getElementById('tourney-round').innerText = "R 1/3";
+            } else {
+                document.getElementById('tourney-round').style.display = 'none';
+                tournamentActive = false;
+            }
+            forceEnvironmentRefresh();
+        }
+
+        function setupPlayerPanels() {
+            const count = parseInt(document.getElementById('player-count').value);
+            const container = document.getElementById('players-box');
+            container.innerHTML = "";
+
+            for (let i = 0; i < count; i++) {
+                const p = players[i];
+                const row = document.createElement('div');
+                row.className = "player-row";
+                
+                let selectOptions = marbleNames.map((name, idx) => 
+                    `<option value="${idx}" ${idx === i ? 'selected' : ''}>🔮 ${name}</option>`
+                ).join('');
+
+                row.innerHTML = `
+                    <div class="player-meta">
+                        <span class="player-name">${p.name}</span>
+                        <span class="player-bank" id="p-bank-${p.id}">$${p.bank}</span>
+                    </div>
+                    <div class="player-inputs">
+                        <select id="p-marble-${p.id}">${selectOptions}</select>
+                        <input type="number" id="p-bet-${p.id}" value="100" min="10" step="10">
+                    </div>
+                `;
+                container.appendChild(row);
+            }
+        }
+
+        function setCamera(mode) {
+            cameraMode = mode;
+            document.querySelectorAll('.cam-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(`cam-${mode}`).classList.add('active');
+            document.getElementById('hud-cam').innerText = mode === 'wasd' ? "Cam: Manual (WASD / Arrows)" : `Cam: Tracking ${mode.toUpperCase()}`;
+        }
+
+        function initPhysicsEngine() {
+            if (engine) Composite.clear(engine.world, false);
+            if (runner) Runner.stop(runner);
+
+            engine = Engine.create({ gravity: { y: 1.6, x: 0 } });
+            runner = Runner.create();
+            Runner.run(runner, engine);
+
+            Events.on(engine, 'collisionStart', (event) => {
+                event.pairs.forEach(pair => {
+                    if (pair.bodyA.label === 'finish' && pair.bodyB.label === 'marble') processArrival(pair.bodyB);
+                    if (pair.bodyB.label === 'finish' && pair.bodyA.label === 'marble') processArrival(pair.bodyA);
+                });
+            });
+
+            Events.on(runner, 'afterUpdate', simulationLoop);
+        }
+
+        function generateFlowCourse(mode) {
+            courseElements = [];
+            Composite.clear(engine.world, false);
+
+            let currentY = 240;
+            const segmentHeight = 290;
+            const stagesCount = 14; // DOUBLED THE COURSE LENGTH (Longer track run)
+            const absoluteTrackFloor = (stagesCount * segmentHeight) + 550;
+
+            // Deep Side Boundary Protection
+            addWall(35, absoluteTrackFloor / 2, 70, absoluteTrackFloor, 0, "#191921");
+            addWall(trackWidth - 35, absoluteTrackFloor / 2, 70, absoluteTrackFloor, 0, "#191921");
+
+            // Drop zone slide entry
+            addWall(300, 130, 650, 50, 0.35, "#2e2e3a");
+            addWall(trackWidth - 300, 130, 650, 50, -0.35, "#2e2e3a");
+
+            // Loop and build 14 massive non-stuck procedural segments
+            for (let i = 0; i < stagesCount; i++) {
+                let leftToRight = i % 2 === 0;
+                let type = Math.floor(Math.random() * 4);
+
+                if (type === 0) { // Off-wall flow ramp
+                    if (leftToRight) addWall(500, currentY + 60, 950, 30, 0.26, "#434351");
+                    else addWall(trackWidth - 500, currentY + 60, 950, 30, -0.26, "#434351");
+                } 
+                else if (type === 1) { // High-capacity pinning arrays
+                    for (let row = 0; row < 3; row++) {
+                        let totalPegs = row % 2 === 0 ? 11 : 10;
+                        for (let p = 0; p < totalPegs; p++) {
+                            let px = (trackWidth / 2 - 400) + (p * 80) + (row % 2 === 0 ? 0 : 40);
+                            let py = currentY + (row * 60);
+                            addPeg(px, py, 11, "#a4b0be");
+                        }
+                    }
+                    addWall(160, currentY + 130, 240, 30, 0.45, "#2e2e3a");
+                    addWall(trackWidth - 160, currentY + 130, 240, 30, -0.45, "#2e2e3a");
+                } 
+                else if (type === 2) { // Double Dynamic Rotor Obstacles
+                    addSpinner(trackWidth / 2 - 240, currentY + 60, 100, 0.05);
+                    addSpinner(trackWidth / 2 + 240, currentY + 60, 100, -0.05);
+                    addWall(trackWidth/2, currentY + 150, 600, 30, leftToRight ? 0.12 : -0.12, "#434351");
+                }
+                else if (type === 3) { // Center Split Cascade blocks
+                    addWall(400, currentY + 50, 500, 30, 0.18, "#353542");
+                    addWall(trackWidth - 400, currentY + 110, 500, 30, -0.18, "#353542");
+                    addPeg(trackWidth / 2, currentY + 80, 25, "#ffffff");
+                }
+                currentY += segmentHeight;
+            }
+
+            // High Volume Exit Funnel
+            addWall(350, currentY + 100, 700, 50, 0.4, "#2e2e3a");
+            addWall(trackWidth - 350, currentY + 100, 700, 50, -0.4, "#2e2e3a");
+
+            // --- MASSIVELY ENLARGED FINISH LINE ARRANGEMENT ---
+            const finalLandingY = currentY + 260;
+            const finishWidth = 750; // Super wide finish sensor
+            const finishHeight = 60; // Thicker visual sensor line
+            
+            const finishSensorZone = Bodies.rectangle(trackWidth / 2, finalLandingY, finishWidth, finishHeight, {
+                isStatic: true, isSensor: true, label: 'finish'
+            });
+            Composite.add(engine.world, finishSensorZone);
+            courseElements.push({ body: finishSensorZone, type: 'finish', w: finishWidth, h: finishHeight, color: "#00d2d3" });
+
+            // Enormous basin collection walls
+            addWall(trackWidth / 2, finalLandingY + 65, finishWidth + 60, 50, 0, "#191921");
+            addWall(trackWidth / 2 - (finishWidth/2 + 15), finalLandingY + 5, 40, 170, 0, "#191921");
+            addWall(trackWidth / 2 + (finishWidth/2 + 15), finalLandingY + 5, 40, 170, 0, "#191921");
+        }
+
+        function addWall(x, y, w, h, angle, color) {
+            let body = Bodies.rectangle(x, y, w, h, { isStatic: true, angle: angle, friction: 0.01, restitution: 0.65 });
+            Composite.add(engine.world, body);
+            courseElements.push({ body, type: 'wall', w, h, color });
+        }
+
+        function addPeg(x, y, r, color) {
+            let body = Bodies.circle(x, y, r, { isStatic: true, friction: 0.01, restitution: 0.75 });
+            Composite.add(engine.world, body);
+            courseElements.push({ body, type: 'peg', r, color });
+        }
+
+        function addSpinner(x, y, radius, speed) {
+            let anchorNode = Bodies.circle(x, y, 8, { isStatic: true });
+            let crossarm1 = Bodies.rectangle(x, y, radius * 2, 16, { friction: 0.01, restitution: 0.65 });
+            let crossarm2 = Bodies.rectangle(x, y, 16, radius * 2, { friction: 0.01, restitution: 0.65 });
+            let rotorBody = Body.create({ parts: [crossarm1, crossarm2, anchorNode], isStatic: false });
+            Composite.add(engine.world, rotorBody);
+            courseElements.push({ body: rotorBody, type: 'spinner', speed, color: "#fa8231" });
+        }
+
+        function forceEnvironmentRefresh() {
+            const mode = document.getElementById('game-mode').value;
+            document.getElementById('hud-mode').innerText = `MODE: ${mode.toUpperCase()}`;
+            initPhysicsEngine();
+            generateFlowCourse(mode);
+        }
+
+        function startRaceSimulation() {
+            if (raceActive) return;
+
+            const count = parseInt(document.getElementById('player-count').value);
+            const mode = document.getElementById('game-mode').value;
+
+            for (let i = 0; i < count; i++) {
+                let p = players[i];
+                let stake = parseInt(document.getElementById(`p-bet-${p.id}`).value);
+                if (isNaN(stake) || stake <= 0 || stake > p.bank) {
+                    alert(`Invalid stake value set for ${p.name}!`);
+                    return;
+                }
+            }
+
+            if (mode === 'tournament' && !tournamentActive) {
+                tournamentActive = true;
+                tournamentRound = 1;
+                tournamentScores = {};
+                marbleNames.forEach(name => tournamentScores[name] = 0);
+                document.getElementById('tourney-round').innerText = `R 1/3`;
+            }
+
+            document.getElementById('hud-mode').innerText = `MODE: ${mode.toUpperCase()}`;
+            document.getElementById('start-btn').disabled = true;
+
+            initPhysicsEngine();
+            generateFlowCourse(mode);
+            
+            finishedMarbles = [];
+            marbles = [];
+            cameraY = 180;
+            cameraX = trackWidth / 2;
+
+            // Spawn exactly 30 distinctly named/colored marbles in grid clusters
+            for (let i = 0; i < 30; i++) {
+                let radius = 13; 
+                let spawnX = (trackWidth / 2) - 180 + (i * 12) + (Math.random() * 2);
+                let spawnY = 40 - (Math.floor(i / 10) * 24); 
+                
+                let ball = Bodies.circle(spawnX, spawnY, radius, {
+                    restitution: 0.5 + Math.random() * 0.15,
+                    friction: 0.001,
+                    frictionAir: 0.0004,
+                    label: 'marble'
+                });
+
+                ball.customData = {
+                    id: i,
+                    name: marbleNames[i],
+                    color: marbleColors[i],
+                    radius: radius,
+                    stagnantTicks: 0
+                };
+
+                marbles.push(ball);
+                Composite.add(engine.world, ball);
+            }
+
+            raceActive = true;
+            startTime = performance.now();
+            refreshLeaderboardUI();
+        }
+
+        function processArrival(marbleBody) {
+            if (!finishedMarbles.includes(marbleBody)) {
+                finishedMarbles.push(marbleBody);
+                refreshLeaderboardUI();
+                
+                if (finishedMarbles.length === marbles.length || finishedMarbles.length >= 30) {
+                    evaluateRaceResults();
+                }
+            }
+        }
+
+        function evaluateRaceResults() {
+            if (!raceActive) return;
+            raceActive = false;
+            document.getElementById('start-btn').disabled = false;
+
+            const mode = document.getElementById('game-mode').value;
+            const count = parseInt(document.getElementById('player-count').value);
+            
+            let finalStandingsOrder = [...finishedMarbles];
+            marbles.forEach(m => {
+                if(!finalStandingsOrder.includes(m)) finalStandingsOrder.push(m);
+            });
+
+            if (mode === 'tournament') {
+                finalStandingsOrder.forEach((m, rank) => {
+                    let pts = 0;
+                    if(rank === 0) pts = 15;
+                    else if(rank === 1) pts = 12;
+                    else if(rank === 2) pts = 10;
+                    else if(rank <= 9) pts = 10 - rank; 
+                    tournamentScores[m.customData.name] += pts;
+                });
+
+                if (tournamentRound < 3) {
+                    alert(`🏁 Round ${tournamentRound} Complete!\n\nTop Finisher: ${finalStandingsOrder[0].customData.name}\nMoving to Round ${tournamentRound + 1}...`);
+                    tournamentRound++;
+                    document.getElementById('tourney-round').innerText = `R ${tournamentRound}/3`;
+                    startRaceSimulation();
+                    return;
+                } else {
+                    tournamentActive = false;
+                    finalStandingsOrder.sort((a, b) => tournamentScores[b.customData.name] - tournamentScores[a.customData.name]);
+                }
+            }
+
+            let summaryMsg = "🏆 RACING SESSION RESULTS:\n";
+            if (mode === 'tournament') summaryMsg = "🏆 GRAND TOURNAMENT FINALS RESULT:\n";
+            if (mode === 'clock') {
+                let fastArrival = elapsedTime <= 35.00; // Expanded time envelope for longer track lengths
+                summaryMsg += fastArrival ? `⏱️ CLOCK BEATEN! Time: ${elapsedTime}s\n\n` : `⏱️ TIMEOUT FAILURE! Time: ${elapsedTime}s\n\n`;
+            }
+
+            let playerPerformanceList = [];
+            for (let i = 0; i < count; i++) {
+                let p = players[i];
+                let chosenIdx = parseInt(document.getElementById(`p-marble-${p.id}`).value);
+                let stake = parseInt(document.getElementById(`p-bet-${p.id}`).value);
+                let selectedBall = marbles[chosenIdx];
+                let absoluteRank = finalStandingsOrder.indexOf(selectedBall);
+
+                playerPerformanceList.push({
+                    player: p,
+                    marbleName: selectedBall.customData.name,
+                    rank: absoluteRank,
+                    stake: stake
+                });
+            }
+
+            // HIGHEST RANK SELECTED WINS THE SPLIT POOL RULES
+            if (mode === 'last') {
+                playerPerformanceList.sort((a, b) => b.rank - a.rank);
+            } else {
+                playerPerformanceList.sort((a, b) => a.rank - b.rank);
+            }
+
+            let highestAchievedRank = playerPerformanceList[0].rank;
+
+            playerPerformanceList.forEach((entry) => {
+                let p = entry.player;
+                let isWinner = false;
+
+                if (mode === 'clock') {
+                    if (elapsedTime <= 35.00) isWinner = true;
+                } else {
+                    if (entry.rank === highestAchievedRank) isWinner = true;
+                }
+
+                if (isWinner) {
+                    let winnings = entry.stake;
+                    if (mode === 'last' || mode === 'tournament') winnings = entry.stake * 2;
+                    p.bank += winnings;
+                    summaryMsg += `✅ ${p.name} WON $${winnings}! Selected ${entry.marbleName} (Rank #${entry.rank + 1})\n`;
+                } else {
+                    p.bank -= entry.stake;
+                    summaryMsg += `❌ ${p.name} LOST $${entry.stake}! Selected ${entry.marbleName} (Rank #${entry.rank + 1})\n`;
+                }
+
+                if (p.bank <= 0) {
+                    p.bank = 250;
+                    summaryMsg += `    [Wallet stimulus injected into ${p.name}'s account]\n`;
+                }
+                document.getElementById(`p-bank-${p.id}`).innerText = `$${p.bank}`;
+            });
+
+            alert(summaryMsg);
+        }
+
+        function simulationLoop() {
+            if (raceActive) {
+                elapsedTime = ((performance.now() - startTime) / 1000).toFixed(2);
+                document.getElementById('hud-timer').innerText = `Time: ${elapsedTime}s`;
+            }
+
+            courseElements.forEach(el => {
+                if (el.type === 'spinner') Body.rotate(el.body, el.speed);
+            });
+
+            marbles.forEach(m => {
+                if (!finishedMarbles.includes(m) && raceActive) {
+                    let speed = Math.sqrt(m.velocity.x * m.velocity.x + m.velocity.y * m.velocity.y);
+                    if (speed < 0.2) {
+                        m.customData.stagnantTicks++;
+                        if (m.customData.stagnantTicks > 85) { 
+                            let lateral = m.position.x < trackWidth / 2 ? 4 : -4;
+                            Body.setVelocity(m, { x: lateral, y: -2 });
+                            m.customData.stagnantTicks = 0;
+                        }
+                    } else m.customData.stagnantTicks = 0;
+
+                    if (m.position.x < 0 || m.position.x > trackWidth || m.position.y > 5500) {
+                        Body.setPosition(m, { x: trackWidth/2, y: 150 });
+                    }
+                }
+            });
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.save();
+
+            let activeMarbles = marbles.filter(m => !finishedMarbles.includes(m));
+            if (cameraMode === 'wasd') {
+                if (keys['w'] || keys['arrowup']) cameraY -= 16;
+                if (keys['s'] || keys['arrowdown']) cameraY += 16;
+                if (keys['a'] || keys['arrowleft']) cameraX -= 16;
+                if (keys['d'] || keys['arrowright']) cameraX += 16;
+            } else if (activeMarbles.length > 0) {
+                activeMarbles.sort((a,b) => cameraMode === 'lead' ? b.position.y - a.position.y : a.position.y - b.position.y);
+                cameraY += (activeMarbles[0].position.y - cameraY) * 0.06;
+                cameraX += (activeMarbles[0].position.x - cameraX) * 0.06;
+            }
+
+            let scale = canvas.width / (trackWidth * 0.96);
+            ctx.translate(canvas.width / 2 - cameraX * scale, canvas.height / 2 - cameraY * scale);
+            ctx.scale(scale, scale);
+
+            // Render Map Layout Structures
+            courseElements.forEach(el => {
+                ctx.fillStyle = el.color;
+                ctx.beginPath();
+                if (el.type === 'wall' || el.type === 'finish') {
+                    ctx.translate(el.body.position.x, el.body.position.y);
+                    ctx.rotate(el.body.angle);
+                    ctx.fillRect(-el.w/2, -el.h/2, el.w, el.h);
+                    ctx.rotate(-el.body.angle);
+                    ctx.translate(-el.body.position.x, -el.body.position.y);
+                } else if (el.type === 'peg') {
+                    ctx.arc(el.body.position.x, el.body.position.y, el.r, 0, Math.PI*2);
+                    ctx.fill();
+                } else if (el.type === 'spinner') {
+                    ctx.translate(el.body.position.x, el.body.position.y);
+                    ctx.rotate(el.body.angle);
+                    ctx.fillRect(-el.body.parts[1].bounds.max.x + el.body.position.x, -8, (el.body.parts[1].bounds.max.x - el.body.position.x)*2, 16);
+                    ctx.fillRect(-8, -el.body.parts[2].bounds.max.y + el.body.position.y, 16, (el.body.parts[2].bounds.max.y - el.body.position.y)*2);
+                    ctx.rotate(-el.body.angle);
+                    ctx.translate(-el.body.position.x, -el.body.position.y);
+                }
+            });
+
+            // Render Marbles
+            marbles.forEach(m => {
+                ctx.fillStyle = m.customData.color;
+                ctx.beginPath();
+                ctx.arc(m.position.x, m.position.y, m.customData.radius, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.fillStyle = "rgba(255,255,255,0.25)";
+                ctx.beginPath();
+                ctx.arc(m.position.x - 3, m.position.y - 3, 3.5, 0, Math.PI*2);
+                ctx.fill();
+
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 1.2;
+                ctx.stroke();
+            });
+
+            ctx.restore();
+
+            if (raceActive && Math.random() < 0.05) refreshLeaderboardUI();
+        }
+
+        function refreshLeaderboardUI() {
+            let sortedStandings = [...marbles];
+            sortedStandings.sort((a, b) => {
+                let arrA = finishedMarbles.indexOf(a); let arrB = finishedMarbles.indexOf(b);
+                if (arrA !== -1 && arrB !== -1) return arrA - arrB;
+                if (arrA !== -1) return -1; if (arrB !== -1) return 1;
+                return b.position.y - a.position.y;
+            });
+
+            const board = document.getElementById('leaderboard');
+            board.innerHTML = "";
+            sortedStandings.forEach((m, rank) => {
+                const li = document.createElement('li');
+                let finIdx = finishedMarbles.indexOf(m);
+                let label = finIdx !== -1 ? `<span style="color:#00d2d3; margin-left:auto; font-weight:bold;">FINISH #${finIdx+1}</span>` : '';
+                li.innerHTML = `
+                    <span style="font-weight:bold; width:25px; color:#747d8c;">#${rank+1}</span>
+                    <span class="color-dot" style="background-color: ${m.customData.color}"></span>
+                    <span>${m.customData.name}</span>
+                    ${label}
+                `;
+                board.appendChild(li);
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apple Catcher Arcade</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            background: #1a1a2e;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            color: #fff;
+            overflow: hidden;
+        }
+        h1 {
+            margin-bottom: 10px;
+            color: #ff4757;
+            text-shadow: 0 0 10px rgba(255, 71, 87, 0.5);
+        }
+        #gameContainer {
+            position: relative;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        canvas {
+            background: linear-gradient(to bottom, #74b9ff, #81ecec);
+            display: block;
+        }
+        #uiOverlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.8);
+            transition: opacity 0.3s ease;
+        }
+        .hidden {
+            display: none !important;
+        }
+        button {
+            background: #2ed573;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1.2rem;
+            font-family: inherit;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #26af5f;
+            transition: transform 0.1s;
+        }
+        button:active {
+            transform: translateY(4px);
+            box-shadow: none;
+        }
+        #gameOverText {
+            font-size: 2.5rem;
+            color: #ff4757;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        #finalScore {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+        }
+        #instructions {
+            margin-top: 15px;
+            font-size: 0.9rem;
+            color: #a4b0be;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>APPLE CATCHER</h1>
+    
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="480" height="360"></canvas>
+        
+        <div id="uiOverlay">
+            <div id="gameOverText">CATCH THE APPLES!</div>
+            <div id="finalScore"></div>
+            <button id="startBtn">PLAY GAME</button>
+            <div id="instructions">Use Left/Right Arrows or A/D to move the bowl.</div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const uiOverlay = document.getElementById('uiOverlay');
+        const startBtn = document.getElementById('startBtn');
+        const gameOverText = document.getElementById('gameOverText');
+        const finalScore = document.getElementById('finalScore');
+
+        // Game State
+        let score = 0;
+        let gameOver = true;
+        let keys = {};
+        let apples = [];
+        
+        // Settings
+        const bowl = {
+            x: canvas.width / 2 - 40,
+            y: canvas.height - 40,
+            width: 80,
+            height: 25,
+            speed: 8
+        };
+
+        let baseAppleSpeed = 3;
+        let appleSpawnRate = 0.02; // Probability per frame
+
+        // Event Listeners
+        window.addEventListener('keydown', e => keys[e.key] = true);
+        window.addEventListener('keyup', e => keys[e.key] = false);
+        startBtn.addEventListener('click', startGame);
+
+        function startGame() {
+            score = 0;
+            apples = [];
+            gameOver = false;
+            uiOverlay.classList.add('hidden');
+            animate();
+        }
+
+        function triggerGameOver() {
+            gameOver = true;
+            uiOverlay.classList.remove('hidden');
+            gameOverText.innerText = "GAME OVER";
+            finalScore.innerText = `Final Score: ${score}`;
+            startBtn.innerText = "PLAY AGAIN";
+        }
+
+        function spawnApple() {
+            if (Math.random() < appleSpawnRate + (score * 0.001)) { // Speeds up spawning subtly as score increases
+                apples.push({
+                    x: Math.random() * (canvas.width - 20) + 10,
+                    y: -20,
+                    radius: 12,
+                    speed: baseAppleSpeed + Math.random() * 2 + (score * 0.1) // Faster apples as score rises
+                });
+            }
+        }
+
+        function update() {
+            // Move Bowl
+            if (keys['ArrowLeft'] || keys['a'] || keys['A']) {
+                bowl.x -= bowl.speed;
+                if (bowl.x < 0) bowl.x = 0;
+            }
+            if (keys['ArrowRight'] || keys['d'] || keys['D']) {
+                bowl.x += bowl.speed;
+                if (bowl.x + bowl.width > canvas.width) bowl.x = canvas.width - bowl.width;
+            }
+
+            // Manage Apples
+            spawnApple();
+
+            for (let i = apples.length - 1; i >= 0; i--) {
+                let a = apples[i];
+                a.y += a.speed;
+
+                // Collision with Bowl
+                if (a.y + a.radius >= bowl.y && 
+                    a.y - a.radius <= bowl.y + bowl.height &&
+                    a.x + a.radius >= bowl.x && 
+                    a.x - a.radius <= bowl.x + bowl.width) {
+                    
+                    apples.splice(i, 1);
+                    score++;
+                    continue;
+                }
+
+                // Hit the ground (Scratch game over condition)
+                if (a.y - a.radius > canvas.height) {
+                    triggerGameOver();
+                    break;
+                }
+            }
+        }
+
+        function draw() {
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Ground/Grass
+            ctx.fillStyle = '#2ed573';
+            ctx.fillRect(0, canvas.height - 15, canvas.width, 15);
+
+            // Draw Bowl (Classic Scratch wood-colored semi-oval look)
+            ctx.fillStyle = '#d25d2a';
+            ctx.beginPath();
+            ctx.ellipse(bowl.x + bowl.width/2, bowl.y + 5, bowl.width/2, bowl.height/2, 0, 0, Math.PI);
+            ctx.fill();
+            // Bowl Rim
+            ctx.fillStyle = '#b34d20';
+            ctx.fillRect(bowl.x, bowl.y, bowl.width, 4);
+
+            // Draw Apples
+            apples.forEach(a => {
+                // Red Body
+                ctx.fillStyle = '#ff4757';
+                ctx.beginPath();
+                ctx.arc(a.x, a.y, a.radius, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Stem
+                ctx.strokeStyle = '#747d8c';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(a.x, a.y - a.radius);
+                ctx.lineTo(a.x + 3, a.y - a.radius - 5);
+                ctx.stroke();
+
+                // Leaf
+                ctx.fillStyle = '#2ed573';
+                ctx.beginPath();
+                ctx.arc(a.x + 4, a.y - a.radius - 4, 2, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Draw Score
+            ctx.fillStyle = '#1e272e';
+            ctx.font = 'bold 18px "Courier New"';
+            ctx.fillText(`SCORE: ${score}`, 15, 30);
+        }
+
+        function animate() {
+            if (gameOver) return;
+            update();
+            draw();
+            requestAnimationFrame(animate);
+        }
+
+        // Initial draw for the background layout
+        draw();
+    </script>
+</body>
+</html>
