@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Terminal</title>
+    <style>
+        /* --- Reset & Core Themes --- */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        body {
+            background-color: #05050a;
+            color: #00d2ff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+            padding: 20px;
+        }
+
+        /* --- Terminal Container --- */
+        .terminal-container {
+            width: 100%;
+            max-width: 800px;
+            background: rgba(10, 15, 30, 0.85);
+            border: 2px solid #00d2ff;
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(0, 210, 255, 0.2), inset 0 0 15px rgba(0, 210, 255, 0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* --- Header Section --- */
+        .terminal-header {
+            background: rgba(0, 210, 255, 0.1);
+            border-bottom: 2px solid #00d2ff;
+            padding: 15px;
+            text-align: center;
+            position: relative;
+        }
+
+        /* Decorative window dots */
+        .terminal-header::before {
+            content: "● ● ●";
+            color: #00d2ff;
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 12px;
+            letter-spacing: 3px;
+            opacity: 0.7;
+        }
+
+        .terminal-header h1 {
+            font-size: 1.5rem;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            text-shadow: 0 0 8px #00d2ff;
+        }
+
+        /* --- Main Content --- */
+        .terminal-content {
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 30px;
+        }
+
+        .system-status {
+            text-align: center;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+            opacity: 0.8;
+        }
+
+        .blink {
+            animation: blinker 1s linear infinite;
+        }
+
+        @keyframes blinker {
+            50% { opacity: 0; }
+        }
+
+        /* --- Buttons Layout --- */
+        .middle-navigation {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        /* --- Button Styling --- */
+        .btn {
+            background: transparent;
+            border: 1px solid #00d2ff;
+            color: #00d2ff;
+            padding: 12px 24px;
+            font-size: 1rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn:hover {
+            background: #00d2ff;
+            color: #05050a;
+            box-shadow: 0 0 15px #00d2ff;
+            font-weight: 900;
+        }
+
+        /* Scanline effect for authentic CRT look */
+        .scanlines {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 4px, 6px 100%;
+            z-index: 999;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- CRT Visual Effect Layer -->
+    <div class="scanlines"></div>
+
+    <div class="terminal-container">
+        <!-- HEADER -->
+        <header class="terminal-header">
+            <h1>&gt; GAME_TERMINAL_v2.6_</h1>
+        </header>
+
+        <!-- MAIN TERMINAL BODY -->
+        <div class="terminal-content">
+            <div class="system-status">
+                <p>STATUS: ONLINE // SELECT DESTINATION<span class="blink">_</span></p>
+            </div>
+
+            <!-- 3 Middle Buttons to Websites -->
+            <nav class="middle-navigation">
+                <!-- Replace '#' with your actual website URLs -->
+                <a href="#" class="btn" target="_blank">[01] Plinko</a>
+                <a href="#" class="btn" target="_blank">[02] Back To Menu</a>
+                <a href="#" class="btn" target="_blank">[03] Color Party</a>
+            </nav>
+        </div>
+    </div>
+
+</body>
+</html>
