@@ -103,6 +103,8 @@
             touch-action: manipulation;
             font-weight: bold;
             letter-spacing: 1px;
+            text-decoration: none;
+            display: inline-block;
         }
         #global-portal-hub-btn:active { transform: scale(0.92); background: #00ffaa; color: #000; }
 
@@ -217,20 +219,17 @@
     <div class="arcade-pulse-bg"></div>
     <div id="frenzy-alert-banner">ROUND 1</div>
 
-    <!-- MAIN PLATFORM LINK LAYER -->
     <div class="persistent-navigation-tray">
-        <button id="global-portal-hub-btn" onclick="navigateToMainMenuPortal('./Game%20Terminal.html')">🏠 Home Menu</button>
+        <a id="global-portal-hub-btn" href="https://yourwebsite.com" onclick="return verifyExitBeforeRedirect();">🏠 Home Menu</a>
         <button id="internal-system-back-btn" onclick="executeInternalSetupBackStep()">↩ Back</button>
     </div>
 
-    <!-- SCREEN 1: START SCREEN -->
     <div id="scr-title" class="screen active">
         <div class="header-title" style="font-size: 2.8rem; line-height: 1.1;">COLOR PARTY<br><span style="background: var(--rainbow); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 3.6rem;">FRENZY</span></div>
         <div style="color: #66efad; font-size: 0.85rem; margin-bottom: 30px; letter-spacing: 2px;">INTERSECTION PRO FLASH MATRIX</div>
         <button class="btn-frenzy" onclick="transitionToBoardSelection()">ENTER SYSTEM</button>
     </div>
 
-    <!-- SCREEN 2: ALL 5 DISTINCT BOARDS -->
     <div id="scr-board-select" class="screen" style="background: transparent;">
         <div class="header-title">SELECT TOURING SPACE</div>
         <div class="selection-split-layout">
@@ -239,7 +238,6 @@
         <button class="btn-frenzy" id="btn-board-next" style="opacity: 0.3; pointer-events:none;" onclick="transitionToPlayerCountSelection()">CHOOSE PARTY MATRIX</button>
     </div>
 
-    <!-- SCREEN 3: 12-PLAYER LOBBY MAX SETTINGS -->
     <div id="scr-mode-select" class="screen" style="background: transparent;">
         <div class="header-title" style="font-size: 1.3rem; margin-bottom: 5px;">TOURNAMENT DURATION</div>
         <div class="mode-toggle-container">
@@ -261,14 +259,12 @@
         <button class="btn-frenzy" style="margin-top:10px;" onclick="transitionToCharacterSelection()">CHOOSE COLORS</button>
     </div>
 
-    <!-- SCREEN 4: 12 CHARACTERS COLOR SELECTION GRID -->
     <div id="scr-char-select" class="screen" style="background: transparent;">
         <div class="header-title" id="lbl-char-assignment-title" style="font-size: 1.3rem;">ASSIGN COLOR SPECTRUM</div>
         <div class="grid-container" id="dom-chars-grid"></div>
         <button class="btn-frenzy" id="btn-char-next" style="opacity: 0.3; pointer-events:none;" onclick="processPlayerCharacterSelectionConfirm()">LOCK SPECTRUM</button>
     </div>
 
-    <!-- SCREEN 5: GAMEPLAY ARENA -->
     <div id="scr-board-gameplay" class="screen" style="padding: 0; overflow: hidden; background: transparent;">
         <div id="main-arena-layout">
             <div class="controls-ticker-hud" id="board-persistent-controls-hud">🎯 BLUE LINES &amp; ARROWS INDICATE FLOW DIRECTION. TAP BRANCH OPTION BUTTON TO PREVIEW DIRECTION SHIFT.</div>
@@ -287,10 +283,8 @@
                         <div class="hud-top-meta">ROUND <span id="lbl-hud-round">1</span>/<span id="lbl-hud-round-total">5</span></div>
                     </div>
                     
-                    <!-- LEADERBOARD MATRIX -->
                     <div class="player-leaderboard-matrix" id="dom-leaderboard-matrix-container"></div>
                     
-                    <!-- IN-GAME CODES DECODER HUB -->
                     <div class="ingame-legend-box">
                         <div class="ingame-legend-title">Space Meaning Map</div>
                         <div class="ingame-legend-row"><div class="ingame-legend-dot" style="background:#1e88e5;"></div><span>Blue: +5 Coins</span></div>
@@ -309,7 +303,6 @@
         </div>
     </div>
 
-    <!-- SCREEN 6: FINALE SCOREBOARD -->
     <div id="scr-grand-finale" class="screen">
         <div class="header-title" style="font-size: 2.2rem;">TOURNAMENT CONCLUDED</div>
         <h2 id="lbl-grand-winner-announcement" style="color: var(--gold); font-size: 1.3rem; margin-bottom: 15px; text-align:center;"></h2>
@@ -354,13 +347,11 @@
     let currentScreenId = "scr-title";
     let transientSelectorStep = 0;
 
-    function navigateToMainMenuPortal(targetUrl) {
+    function verifyExitBeforeRedirect() {
         if (currentScreenId === "scr-board-gameplay") {
-            if (!confirm("Are you sure you want to exit the current match and return to the main website menu?")) {
-                return;
-            }
+            return confirm("Are you sure you want to exit the current match and return to the website?");
         }
-        window.location.href = targetUrl; 
+        return true;
     }
 
     function updateNavigationButtonStateUI() {

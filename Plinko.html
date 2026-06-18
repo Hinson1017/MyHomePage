@@ -12,7 +12,7 @@
 </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Arcade Plinko - FRENZY ENGINE V3</title>
+    <title>Arcade Plinko - FRENZY</title>
     <style>
         :root {
             --bg-color: #020208;
@@ -228,7 +228,7 @@
     <div id="game-container">
         
         <div id="menu-screen" class="screen">
-            <h1>NEON FRENZY<br><span style="color: #ff00ff;">PLINKO</span></h1>
+            <h1>ARCADE FRENZY<br><span style="color: #ff00ff;">PLINKO</span></h1>
             <div class="menu-buttons">
                 <button class="btn p1-btn" onclick="showComOptions()">1 PLAYER</button>
                 <button class="btn p2-btn" onclick="startGame(2, 0)">2 PLAYERS</button>
@@ -360,7 +360,7 @@
             get width() { return this.cellWidth * 3; }
         };
 
-        const potentialValues = [10, 25, 40, 60, 80, 95, 110, 130];
+        const potentialValues = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
         const bucketColors = [
             '#ff0055', '#ff5500', '#ffcc00', '#33ff00', '#00ffcc', '#0099ff', '#7700ff', 
             '#ff00ff', '#ff0055', '#00ffcc', '#ffcc00', '#ff5500', '#7700ff', '#33ff00'
