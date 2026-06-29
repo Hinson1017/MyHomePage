@@ -301,8 +301,7 @@
         </div>
 
     </div>
-
-    <script>
+<script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const container = document.getElementById('game-container');
@@ -318,6 +317,8 @@
 
         let totalActivePlayers = 1; 
         let activePlayer = 1; 
+        let isGameOver = false; 
+        let isGameStarted = false; // 👈 NEW STATE FLAG: Completely locks out all drops until match setup is complete
         let playersData = {
             1: { score: 0, ballsLeft: TOTAL_BALLS, color: '#ff2a6d', isCom: false, name: "PLAYER 1" },
             2: { score: 0, ballsLeft: TOTAL_BALLS, color: '#05d9e8', isCom: false, name: "PLAYER 2" },
@@ -498,7 +499,6 @@
                         let wall2X = mbLeft + midBox.cellWidth * 2;  // Wall between 100 and second 50
 
                         if (Math.abs(this.x - wall1X) < BALL_RADIUS + 2) {
-                            // Bounce off internal Divider 1
                             if (this.x < wall1X) {
                                 this.x = wall1X - BALL_RADIUS - 2;
                                 this.vx = -Math.abs(this.vx) * BOUNCE * FRENZY_MAX_BOOST;
@@ -508,7 +508,6 @@
                             }
                             triggerSparks(this.x, this.y, '#ffffff', 3);
                         } else if (Math.abs(this.x - wall2X) < BALL_RADIUS + 2) {
-                            // Bounce off internal Divider 2
                             if (this.x < wall2X) {
                                 this.x = wall2X - BALL_RADIUS - 2;
                                 this.vx = -Math.abs(this.vx) * BOUNCE * FRENZY_MAX_BOOST;
@@ -518,14 +517,12 @@
                             }
                             triggerSparks(this.x, this.y, '#ffffff', 3);
                         } else if (this.x < mbLeft + 12) {
-                            // Left boundary panel
                             this.x = mbLeft - BALL_RADIUS - 2;
                             this.vx = -Math.abs(this.vx) * BOUNCE * FRENZY_MAX_BOOST;
                             triggerSparks(this.x, this.y, '#ffffff', 2);
                         } else if (this.x > mbRight - 12) {
-                            // Right boundary panel
                             this.x = mbRight + BALL_RADIUS + 2;
-                            this.vx = Math.abs(this.vx) * BOUNCE * FRENZY_MAX_BOOST;
+                            this.vx = -Math.abs(this.vx) * BOUNCE * FRENZY_MAX_BOOST;
                             triggerSparks(this.x, this.y, '#ffffff', 2);
                         }
                     }
@@ -679,6 +676,13 @@
         }
 
         function startGame(humanPlayers, comOpponents) {
+            isGameOver = false;
+            isGameStarted = true; // 👈 Activate game logic blocks
+            isBallInPlay = false;
+            comTimer = 0;
+            balls = [];
+            particles = [];
+
             totalActivePlayers = humanPlayers + comOpponents;
             
             for (let i = 1; i <= 4; i++) {
@@ -698,23 +702,24 @@
             }
             
             activePlayer = 1;
-            isBallInPlay = false;
-            balls = [];
-            particles = [];
             bonusBox.x = 0;
             midBox.x = 150;
-            comTimer = 0;
 
             document.getElementById('menu-screen').className = 'screen hidden';
             document.getElementById('com-screen').className = 'screen hidden';
             document.getElementById('game-over-screen').className = 'screen hidden';
             
+            const existingList = document.getElementById('dynamic-endgame-scoreboard');
+            if (existingList) existingList.remove();
+
             initBuckets(); 
             initPegs();
             updateUI();
         }
 
         function updateUI() {
+            if (!isGameStarted || isGameOver) return; // 👈 Prevent rendering errors on menus
+
             for (let i = 1; i <= totalActivePlayers; i++) {
                 let scoreStr = String(playersData[i].score).padStart(3, '0');
                 document.getElementById(`p${i}-score`).innerText = scoreStr;
@@ -764,6 +769,7 @@
         }
 
         function dropBallAt(xPosition) {
+            if (!isGameStarted || isGameOver) return; // 👈 Double lock drops
             playersData[activePlayer].ballsLeft--;
             balls.push(new Ball(xPosition, 35, activePlayer));
             isBallInPlay = true;
@@ -772,7 +778,8 @@
         }
 
         canvas.addEventListener('click', (e) => {
-            if (isBallInPlay || playersData[activePlayer].isCom) return;
+            // 👈 Strict click blocker checks if the match has been formally initialized
+            if (!isGameStarted || isGameOver || isBallInPlay || playersData[activePlayer].isCom) return;
 
             if (mouseX > leftWallX + BALL_RADIUS && mouseX < rightWallX - BALL_RADIUS) {
                 if (playersData[activePlayer].ballsLeft > 0) {
@@ -782,6 +789,7 @@
         });
 
         canvas.addEventListener('mousemove', (e) => {
+            if (!isGameStarted || isGameOver) return;
             const rect = canvas.getBoundingClientRect();
             let rawX = e.clientX - rect.left;
             mouseX = Math.max(leftWallX + BALL_RADIUS + 2, Math.min(rightWallX - BALL_RADIUS - 2, rawX));
@@ -806,25 +814,26 @@
                 triggerScreenShake();
             }
 
-            // Remove the ball from play
             balls = [];
             isBallInPlay = false;
             comTimer = 0; 
 
             let next = getNextPlayer(activePlayer);
-            if (next !== null) activePlayer = next;
-            else {
+            if (next !== null) {
+                activePlayer = next;
+                updateUI();
+            } else {
                 endGame();
-                return;
             }
-            updateUI();
         }
 
         function endGame() {
+            isGameOver = true;
+            comTimer = 0; 
+            
             const overScreen = document.getElementById('game-over-screen');
             const winText = document.getElementById('winner-text');
-            overScreen.className = 'screen';
-
+            
             let highestScore = -1;
             let winner = 1;
             let tie = false;
@@ -839,16 +848,70 @@
                 }
             }
 
-            if (tie) {
-                winText.innerText = "STALEMATE TIE DRAW!";
-                winText.style.color = '#ffffff';
-            } else {
-                winText.innerText = `${playersData[winner].name} WINS!`;
-                winText.style.color = playersData[winner].color;
+            if (winText) {
+                if (tie) {
+                    winText.innerText = "STALEMATE TIE DRAW!";
+                    winText.style.color = '#ffffff';
+                } else {
+                    winText.innerText = `${playersData[winner].name} WINS!`;
+                    winText.style.color = playersData[winner].color;
+                }
+            }
+
+            const existingList = document.getElementById('dynamic-endgame-scoreboard');
+            if (existingList) existingList.remove();
+
+            // Create high-visibility HTML scoreboard layout
+            const listContainer = document.createElement('div');
+            listContainer.id = 'dynamic-endgame-scoreboard';
+            listContainer.style.cssText = `
+                background: #0d0d26;
+                border: 3px solid #05d9e8;
+                border-radius: 8px;
+                padding: 15px;
+                margin: 20px auto;
+                width: 280px;
+                box-shadow: 0px 0px 15px rgba(5, 217, 232, 0.4);
+                font-family: monospace;
+                text-align: left;
+                z-index: 99999;
+                position: relative;
+            `;
+
+            const scoreTitle = document.createElement('div');
+            scoreTitle.innerText = "🏆 FINAL STANDINGS 🏆";
+            scoreTitle.style.cssText = "text-align: center; color: #fff; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid rgba(5, 217, 232, 0.3); padding-bottom: 5px;";
+            listContainer.appendChild(scoreTitle);
+
+            for (let i = 1; i <= totalActivePlayers; i++) {
+                const row = document.createElement('div');
+                row.style.cssText = "display: flex; justify-content: space-between; margin: 6px 0; font-size: 14px; font-weight: bold;";
+                
+                const nameSpan = document.createElement('span');
+                nameSpan.innerText = playersData[i].name;
+                nameSpan.style.color = playersData[i].color;
+
+                const scoreSpan = document.createElement('span');
+                scoreSpan.innerText = `${playersData[i].score} PTS`;
+                scoreSpan.style.color = '#ffffff';
+
+                row.appendChild(nameSpan);
+                row.appendChild(scoreSpan);
+                listContainer.appendChild(row);
+            }
+
+            if (overScreen && winText) {
+                overScreen.className = 'screen';
+                winText.insertAdjacentElement('afterend', listContainer);
             }
         }
 
         function resetToMenu() {
+            isGameOver = false;
+            isGameStarted = false; // 👈 Freezes entire execution processing during setup screens
+            comTimer = 0;
+            const existingList = document.getElementById('dynamic-endgame-scoreboard');
+            if (existingList) existingList.remove();
             document.getElementById('game-over-screen').className = 'screen hidden';
             document.getElementById('menu-screen').className = 'screen';
         }
@@ -892,10 +955,8 @@
             ctx.lineWidth = 3;
             ctx.strokeStyle = '#ffffff';
             ctx.beginPath();
-            // Inner Wall 1 (between first 50 and 100)
             ctx.moveTo(mx + cw, my + 4);
             ctx.lineTo(mx + cw, my + h);
-            // Inner Wall 2 (between 100 and second 50)
             ctx.moveTo(mx + cw * 2, my + 4);
             ctx.lineTo(mx + cw * 2, my + h);
             ctx.stroke();
@@ -962,8 +1023,8 @@
         function gameLoop() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Draw Top Ejection Target Guidelines
-            if (!isBallInPlay && !playersData[activePlayer].isCom) {
+            // Draw Top Ejection Target Guidelines (Requires an initialized live match)
+            if (isGameStarted && !isBallInPlay && !playersData[activePlayer].isCom && !isGameOver) {
                 ctx.save();
                 ctx.strokeStyle = 'rgba(0, 242, 254, 0.15)';
                 ctx.lineWidth = 1;
@@ -980,16 +1041,20 @@
                 ctx.restore();
             }
 
-            // Core Engine Logic Execution Step
-            updateMovingElements();
+            // Core Moving Elements updates only if game is fully started and not over
+            if (isGameStarted && !isGameOver) {
+                updateMovingElements();
+            }
 
-            // Simple Automated CPU Engine Ejection Brain
-            if (playersData[activePlayer].isCom && !isBallInPlay) {
+            // Automated CPU Engine AI Ejection Brain
+            if (isGameStarted && !isGameOver && !isBallInPlay && playersData[activePlayer] && playersData[activePlayer].isCom) {
                 comTimer++;
                 if (comTimer > 45) { 
                     let randomRangeX = Math.random() * (rightWallX - leftWallX - BALL_RADIUS * 2) + leftWallX + BALL_RADIUS;
                     dropBallAt(randomRangeX);
                 }
+            } else {
+                comTimer = 0; 
             }
 
             // Simulation Entity Array Processing updates
