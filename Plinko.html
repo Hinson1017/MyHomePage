@@ -230,8 +230,8 @@
         <div id="menu-screen" class="screen">
             <h1>ARCADE FRENZY<br><span style="color: #ff00ff;">PLINKO</span></h1>
             <div class="menu-buttons">
-                <button class="btn p1-btn" onclick="showComOptions()">1 PLAYER</button>
-                <button class="btn p2-btn" onclick="startGame(2, 0)">2 PLAYERS</button>
+                <button class="btn p1-btn" onclick="showComOptions(1)">1 PLAYER</button>
+                <button class="btn p2-btn" onclick="showComOptions(2)">2 PLAYERS</button>
                 <button class="btn p3-btn" onclick="startGame(3, 0)">3 PLAYERS</button>
                 <button class="btn p4-btn" onclick="startGame(4, 0)">4 PLAYERS</button>
                 <a href="GameTerminal.html" target="_blank" class="btn web-btn full-width">VISIT WEBSITE</a>
@@ -239,13 +239,9 @@
         </div>
 
         <div id="com-screen" class="screen hidden">
-            <h1>CHOOSE OPPONENTS</h1>
-            <div class="menu-buttons">
-                <button class="btn p1-btn" onclick="startGame(1, 0)">NO COMS (SOLO)</button>
-                <button class="btn p2-btn" onclick="startGame(1, 1)">PLAY WITH 1 COM</button>
-                <button class="btn p4-btn" onclick="startGame(1, 3)">PLAY WITH 3 COMS</button>
-                <button class="btn full-width" style="border-color:#fff;" onclick="hideComOptions()">BACK</button>
-            </div>
+            <h1 id="com-screen-title">CHOOSE OPPONENTS</h1>
+            <div class="menu-buttons" id="com-buttons-container">
+                </div>
         </div>
 
         <div id="game-over-screen" class="screen hidden">
@@ -301,6 +297,7 @@
         </div>
 
     </div>
+
 <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
@@ -318,7 +315,8 @@
         let totalActivePlayers = 1; 
         let activePlayer = 1; 
         let isGameOver = false; 
-        let isGameStarted = false; // 👈 NEW STATE FLAG: Completely locks out all drops until match setup is complete
+        let isGameStarted = false; 
+        let selectedHumanPlayers = 1;
         let playersData = {
             1: { score: 0, ballsLeft: TOTAL_BALLS, color: '#ff2a6d', isCom: false, name: "PLAYER 1" },
             2: { score: 0, ballsLeft: TOTAL_BALLS, color: '#05d9e8', isCom: false, name: "PLAYER 2" },
@@ -339,7 +337,6 @@
         const rightWallX = canvas.width - 70;
         const wallHeight = 110;
 
-        // Bottom Overdrive Laser beam parameters
         let bonusBox = {
             x: 0,
             y: 655, 
@@ -350,7 +347,6 @@
             hitFlash: 0
         };
 
-        // Mid-Stage Pass-Through Sweeper Box Setup
         let midBox = {
             x: 150,
             y: 350,          
@@ -358,6 +354,8 @@
             height: 40,      
             speed: 2.2,      
             direction: 1,
+            hitFlash: 0, 
+            hitChamber: -1, // Tracks EXACT chamber inside box that got triggered (0=Left, 1=Center, 2=Right)
             get width() { return this.cellWidth * 3; }
         };
 
@@ -439,7 +437,6 @@
                 this.x += this.vx;
                 this.y += this.vy;
 
-                // Border Constraints
                 if (this.x - BALL_RADIUS < 10) {
                     this.x = BALL_RADIUS + 10;
                     this.vx = Math.abs(this.vx) * BOUNCE * FRENZY_MAX_BOOST;
@@ -448,7 +445,6 @@
                     this.vx = -Math.abs(this.vx) * BOUNCE * FRENZY_MAX_BOOST;
                 }
 
-                // Funnel Walls
                 if (this.y < wallHeight) {
                     if (this.x - BALL_RADIUS < leftWallX) {
                         this.x = leftWallX + BALL_RADIUS;
@@ -459,7 +455,6 @@
                     }
                 }
 
-                // ADVANCED MID-STAGE PASS-THROUGH LOGIC WITH INTERNAL WALLS
                 let mbLeft = midBox.x;
                 let mbRight = midBox.x + midBox.width;
                 let mbTop = midBox.y;
@@ -470,33 +465,30 @@
                     
                     let previousY = this.history.length > 1 ? this.history[this.history.length - 2].y : this.y;
                     
-                    // Dropping clean through the top edge
                     if (previousY <= mbTop + 6 && this.vy > 0) {
                         if (this.cooldowns.midBox === 0) {
                             let relativeX = this.x - mbLeft;
                             let chamberIndex = Math.floor(relativeX / midBox.cellWidth);
                             let points = 0;
-                            let fColor = '#fff';
 
                             if (chamberIndex === 0 || chamberIndex === 2) {
                                 points = 50;
-                                fColor = 'var(--p4-color)'; 
                             } else if (chamberIndex === 1) {
                                 points = 100;
-                                fColor = 'var(--p1-color)'; 
                             }
 
                             if (points > 0) {
                                 playersData[this.player].score += points;
-                                triggerSparks(this.x, this.y, fColor, 14);
+                                triggerSparks(this.x, this.y, '#ffffff', 14);
                                 triggerScreenShake();
+                                midBox.hitFlash = 15; 
+                                midBox.hitChamber = chamberIndex; // Save exactly which cell caught the ball
                                 this.cooldowns.midBox = 25; 
                             }
                         }
                     } else {
-                        // CHECK COLLISION AGAINST INTERNAL CHAMBER WALLS & SIDE PANELS
-                        let wall1X = mbLeft + midBox.cellWidth;  // Wall between first 50 and 100
-                        let wall2X = mbLeft + midBox.cellWidth * 2;  // Wall between 100 and second 50
+                        let wall1X = mbLeft + midBox.cellWidth;  
+                        let wall2X = mbLeft + midBox.cellWidth * 2;  
 
                         if (Math.abs(this.x - wall1X) < BALL_RADIUS + 2) {
                             if (this.x < wall1X) {
@@ -528,7 +520,6 @@
                     }
                 }
 
-                // Partition Bottom Wall Intersections
                 dividers.forEach(div => {
                     if (this.y + BALL_RADIUS > div.y) {
                         if (Math.abs(this.x - div.x) < BALL_RADIUS + 2) {
@@ -545,7 +536,6 @@
                     }
                 });
 
-                // Peg Matrix Map Impact Routine
                 pegs.forEach(peg => {
                     let dx = this.x - peg.x;
                     let dy = this.y - peg.y;
@@ -572,7 +562,6 @@
                     }
                 });
 
-                // Check for scoring condition at screen bottom
                 if (this.y + BALL_RADIUS >= canvas.height) {
                     handleBallScored(this);
                 }
@@ -602,8 +591,30 @@
             }
         }
 
-        function showComOptions() {
+        function showComOptions(humanPlayers) {
+            selectedHumanPlayers = humanPlayers;
             document.getElementById('menu-screen').className = 'screen hidden';
+            
+            const title = document.getElementById('com-screen-title');
+            const btnContainer = document.getElementById('com-buttons-container');
+            btnContainer.innerHTML = ''; 
+
+            if (humanPlayers === 1) {
+                title.innerText = "CHOOSE COMS (1P)";
+                btnContainer.innerHTML = `
+                    <button class="btn p1-btn" onclick="startGame(1, 0)">NO COMS (SOLO)</button>
+                    <button class="btn p2-btn" onclick="startGame(1, 1)">PLAY WITH 1 COM</button>
+                    <button class="btn p4-btn" onclick="startGame(1, 3)">PLAY WITH 3 COMS</button>
+                `;
+            } else if (humanPlayers === 2) {
+                title.innerText = "CHOOSE COMS (2P)";
+                btnContainer.innerHTML = `
+                    <button class="btn p2-btn" onclick="startGame(2, 0)">NO COMS (2P VS)</button>
+                    <button class="btn p4-btn" onclick="startGame(2, 2)">PLAY WITH 2 COMS</button>
+                `;
+            }
+
+            btnContainer.innerHTML += `<button class="btn full-width" style="border-color:#fff; margin-top:10px;" onclick="hideComOptions()">BACK</button>`;
             document.getElementById('com-screen').className = 'screen';
         }
 
@@ -677,7 +688,7 @@
 
         function startGame(humanPlayers, comOpponents) {
             isGameOver = false;
-            isGameStarted = true; // 👈 Activate game logic blocks
+            isGameStarted = true; 
             isBallInPlay = false;
             comTimer = 0;
             balls = [];
@@ -704,6 +715,8 @@
             activePlayer = 1;
             bonusBox.x = 0;
             midBox.x = 150;
+            midBox.hitFlash = 0;
+            midBox.hitChamber = -1;
 
             document.getElementById('menu-screen').className = 'screen hidden';
             document.getElementById('com-screen').className = 'screen hidden';
@@ -718,7 +731,7 @@
         }
 
         function updateUI() {
-            if (!isGameStarted || isGameOver) return; // 👈 Prevent rendering errors on menus
+            if (!isGameStarted || isGameOver) return; 
 
             for (let i = 1; i <= totalActivePlayers; i++) {
                 let scoreStr = String(playersData[i].score).padStart(3, '0');
@@ -769,7 +782,7 @@
         }
 
         function dropBallAt(xPosition) {
-            if (!isGameStarted || isGameOver) return; // 👈 Double lock drops
+            if (!isGameStarted || isGameOver) return; 
             playersData[activePlayer].ballsLeft--;
             balls.push(new Ball(xPosition, 35, activePlayer));
             isBallInPlay = true;
@@ -778,7 +791,6 @@
         }
 
         canvas.addEventListener('click', (e) => {
-            // 👈 Strict click blocker checks if the match has been formally initialized
             if (!isGameStarted || isGameOver || isBallInPlay || playersData[activePlayer].isCom) return;
 
             if (mouseX > leftWallX + BALL_RADIUS && mouseX < rightWallX - BALL_RADIUS) {
@@ -861,7 +873,6 @@
             const existingList = document.getElementById('dynamic-endgame-scoreboard');
             if (existingList) existingList.remove();
 
-            // Create high-visibility HTML scoreboard layout
             const listContainer = document.createElement('div');
             listContainer.id = 'dynamic-endgame-scoreboard';
             listContainer.style.cssText = `
@@ -908,7 +919,7 @@
 
         function resetToMenu() {
             isGameOver = false;
-            isGameStarted = false; // 👈 Freezes entire execution processing during setup screens
+            isGameStarted = false; 
             comTimer = 0;
             const existingList = document.getElementById('dynamic-endgame-scoreboard');
             if (existingList) existingList.remove();
@@ -923,49 +934,90 @@
             let cw = midBox.cellWidth;
             let h = midBox.height;
 
-            ctx.font = '900 14px monospace';
-            ctx.textAlign = 'center';
+            // Global frame tracker handler
+            let structureFlashActive = (midBox.hitFlash > 0);
 
-            // Chamber 1: 50 (Yellow)
-            ctx.lineWidth = 2;
-            ctx.strokeStyle = 'var(--p4-color)';
-            ctx.fillStyle = 'rgba(255, 234, 0, 0.08)';
+            ctx.font = '900 15px monospace';
+            ctx.textAlign = 'center';
+            ctx.lineWidth = 3;
+
+            // --- CHAMBER 0: LEFT 50 ---
+            ctx.save();
+            if (structureFlashActive && midBox.hitChamber === 0) {
+                ctx.strokeStyle = '#ffffff';
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.65)';
+                ctx.shadowColor = '#ffffff';
+                ctx.shadowBlur = 20;
+            } else {
+                ctx.strokeStyle = '#ffea00';
+                ctx.fillStyle = 'rgba(255, 234, 0, 0.35)';
+                ctx.shadowColor = '#ffea00';
+                ctx.shadowBlur = 10;
+            }
             ctx.fillRect(mx, my, cw, h);
             ctx.strokeRect(mx, my, cw, h);
-            ctx.fillStyle = 'var(--p4-color)';
+            ctx.fillStyle = '#ffffff';
             ctx.fillText('50', mx + cw / 2, my + 25);
+            ctx.restore();
 
-            // Chamber 2: 100 (Red)
-            ctx.strokeStyle = 'var(--p1-color)';
-            ctx.fillStyle = 'rgba(255, 42, 109, 0.08)';
+            // --- CHAMBER 1: CENTER 100 ---
+            ctx.save();
+            if (structureFlashActive && midBox.hitChamber === 1) {
+                ctx.strokeStyle = '#ffffff';
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.65)';
+                ctx.shadowColor = '#ffffff';
+                ctx.shadowBlur = 20;
+            } else {
+                ctx.strokeStyle = '#ff2a6d';
+                ctx.fillStyle = 'rgba(255, 42, 109, 0.35)';
+                ctx.shadowColor = '#ff2a6d';
+                ctx.shadowBlur = 10;
+            }
             ctx.fillRect(mx + cw, my, cw, h);
             ctx.strokeRect(mx + cw, my, cw, h);
-            ctx.fillStyle = 'var(--p1-color)';
+            ctx.fillStyle = '#ffffff';
             ctx.fillText('100', mx + cw + cw / 2, my + 25);
+            ctx.restore();
 
-            // Chamber 3: 50 (Yellow)
-            ctx.strokeStyle = 'var(--p4-color)';
-            ctx.fillStyle = 'rgba(255, 234, 0, 0.08)';
+            // --- CHAMBER 2: RIGHT 50 ---
+            ctx.save();
+            if (structureFlashActive && midBox.hitChamber === 2) {
+                ctx.strokeStyle = '#ffffff';
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.65)';
+                ctx.shadowColor = '#ffffff';
+                ctx.shadowBlur = 20;
+            } else {
+                ctx.strokeStyle = '#ffea00';
+                ctx.fillStyle = 'rgba(255, 234, 0, 0.35)';
+                ctx.shadowColor = '#ffea00';
+                ctx.shadowBlur = 10;
+            }
             ctx.fillRect(mx + (cw * 2), my, cw, h);
             ctx.strokeRect(mx + (cw * 2), my, cw, h);
-            ctx.fillStyle = 'var(--p4-color)';
+            ctx.fillStyle = '#ffffff';
             ctx.fillText('50', mx + (cw * 2) + cw / 2, my + 25);
+            ctx.restore();
 
-            // DRAW INTERNAL PHYSICAL INNER WALL FILAMENTS
-            ctx.lineWidth = 3;
+            // Reinforce crisp outer box structural inner divider lines
+            ctx.lineWidth = 2;
             ctx.strokeStyle = '#ffffff';
             ctx.beginPath();
-            ctx.moveTo(mx + cw, my + 4);
+            ctx.moveTo(mx + cw, my);
             ctx.lineTo(mx + cw, my + h);
-            ctx.moveTo(mx + cw * 2, my + 4);
+            ctx.moveTo(mx + cw * 2, my);
             ctx.lineTo(mx + cw * 2, my + h);
             ctx.stroke();
+
+            // Decrement animation timing sequence
+            if (structureFlashActive) {
+                midBox.hitFlash--;
+                if (midBox.hitFlash === 0) midBox.hitChamber = -1; // Reset tracker
+            }
 
             ctx.restore();
         }
 
         function drawBottomElements() {
-            // Overdrive Laser Slider Beam
             ctx.save();
             if (bonusBox.hitFlash > 0) {
                 ctx.fillStyle = '#ffffff';
@@ -979,109 +1031,110 @@
             ctx.strokeRect(bonusBox.x, bonusBox.y, bonusBox.width, bonusBox.height);
             ctx.restore();
 
-            // Buckets Floor Grid
             buckets.forEach(bucket => {
                 ctx.save();
                 ctx.fillStyle = 'rgba(0,0,0,0.4)';
                 ctx.fillRect(bucket.x, bucket.y, bucket.width, bucket.height);
                 
                 ctx.lineWidth = 2;
+                
+                // Neon White dynamic trigger logic
                 if (bucket.currentValue === 150) {
                     ctx.strokeStyle = '#ffffff';
-                    ctx.shadowBlur = 10;
                     ctx.shadowColor = '#ffffff';
+                    ctx.shadowBlur = 10;
+                    ctx.fillStyle = '#ffffff';
                 } else {
                     ctx.strokeStyle = bucket.color;
+                    ctx.fillStyle = bucket.color;
                 }
-                ctx.strokeRect(bucket.x, bucket.y, bucket.width, bucket.height);
 
-                ctx.fillStyle = (bucket.currentValue === 150) ? '#ffffff' : bucket.color;
+                ctx.strokeRect(bucket.x + 2, bucket.y, bucket.width - 4, bucket.height);
                 ctx.font = 'bold 13px monospace';
                 ctx.textAlign = 'center';
                 ctx.fillText(bucket.currentValue, bucket.x + bucket.width / 2, bucket.y + 35);
                 ctx.restore();
             });
 
-            // Base Grid Channel Pins
             dividers.forEach(div => {
                 ctx.save();
-                if (div.flash > 0) {
-                    ctx.strokeStyle = '#ffffff';
-                    div.flash--;
-                } else {
-                    ctx.strokeStyle = '#2d2d69';
-                }
+                ctx.strokeStyle = div.flash > 0 ? '#ffffff' : '#2d2d69';
+                if (div.flash > 0) div.flash--;
                 ctx.lineWidth = 3;
                 ctx.beginPath();
                 ctx.moveTo(div.x, div.y);
-                ctx.lineTo(div.x, canvas.height - 60);
+                ctx.lineTo(div.x, canvas.height);
                 ctx.stroke();
                 ctx.restore();
             });
         }
 
+        function drawFunnel() {
+            ctx.save();
+            ctx.strokeStyle = '#2d2d69';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(10, 0);
+            ctx.lineTo(10, wallHeight);
+            ctx.lineTo(leftWallX, wallHeight);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(canvas.width - 10, 0);
+            ctx.lineTo(canvas.width - 10, wallHeight);
+            ctx.lineTo(rightWallX, wallHeight);
+            ctx.stroke();
+            ctx.restore();
+        }
+
         function gameLoop() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Draw Top Ejection Target Guidelines (Requires an initialized live match)
-            if (isGameStarted && !isBallInPlay && !playersData[activePlayer].isCom && !isGameOver) {
+            if (isGameStarted && !isGameOver) {
+                updateMovingElements();
+
+                if (playersData[activePlayer].isCom && !isBallInPlay) {
+                    comTimer++;
+                    if (comTimer > 45) {
+                        let targetX = leftWallX + BALL_RADIUS + 10 + Math.random() * (rightWallX - leftWallX - 20 - BALL_RADIUS * 2);
+                        dropBallAt(targetX);
+                    }
+                }
+
+                balls.forEach(ball => {
+                    ball.update();
+                    ball.draw();
+                });
+
+                particles.forEach((p, idx) => {
+                    p.update();
+                    p.draw();
+                    if (p.alpha <= 0) particles.splice(idx, 1);
+                });
+            }
+
+            drawFunnel();
+            pegs.forEach(peg => peg.draw());
+            drawMidBox();
+            drawBottomElements();
+
+            if (isGameStarted && !isGameOver && !isBallInPlay && !playersData[activePlayer].isCom) {
                 ctx.save();
-                ctx.strokeStyle = 'rgba(0, 242, 254, 0.15)';
-                ctx.lineWidth = 1;
-                ctx.setLineDash([4, 6]);
-                ctx.beginPath();
-                ctx.moveTo(mouseX, 35);
-                ctx.lineTo(mouseX, canvas.height);
-                ctx.stroke();
-                
                 ctx.fillStyle = playersData[activePlayer].color;
+                ctx.globalAlpha = 0.35;
                 ctx.beginPath();
                 ctx.arc(mouseX, 35, BALL_RADIUS, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.restore();
             }
 
-            // Core Moving Elements updates only if game is fully started and not over
-            if (isGameStarted && !isGameOver) {
-                updateMovingElements();
-            }
-
-            // Automated CPU Engine AI Ejection Brain
-            if (isGameStarted && !isGameOver && !isBallInPlay && playersData[activePlayer] && playersData[activePlayer].isCom) {
-                comTimer++;
-                if (comTimer > 45) { 
-                    let randomRangeX = Math.random() * (rightWallX - leftWallX - BALL_RADIUS * 2) + leftWallX + BALL_RADIUS;
-                    dropBallAt(randomRangeX);
-                }
-            } else {
-                comTimer = 0; 
-            }
-
-            // Simulation Entity Array Processing updates
-            pegs.forEach(peg => peg.draw());
-            
-            drawMidBox();
-            drawBottomElements();
-
-            // Physics Entity Update Processing Loop
-            balls.forEach(ball => {
-                ball.update();
-                ball.draw();
-            });
-
-            particles.forEach((part, index) => {
-                part.update();
-                part.draw();
-                if (part.alpha <= 0) particles.splice(index, 1);
-            });
-
             requestAnimationFrame(gameLoop);
         }
 
-        // Run game loop initialization
+        // Initialize frame request sequence loop
         initBuckets();
         initPegs();
-        requestAnimationFrame(gameLoop);
-    </script>
+        gameLoop();
+</script>
 </body>
 </html>
